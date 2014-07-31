@@ -1,0 +1,106 @@
+<!doctype html>
+<head>
+<title>pyxterm</title>
+<!--
+  pyxterm: Basic Python socket implementation for term.js
+
+  Example template
+  Modified by: R. Saravanan <sarava@sarava.net> 2014
+  Original Copyright (c) 2012-2013, Christopher Jeffrey (MIT License)
+-->
+<style>
+  html {
+    background: #555;
+  }
+
+  h1 {
+    margin-bottom: 20px;
+    font: 20px/1.5 sans-serif;
+  }
+
+/*
+  .terminal {
+    float: left;
+    border: #000 solid 5px;
+    font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+    font-size: 11px;
+    color: #f0f0f0;
+    background: #000;
+  }
+
+  .terminal-cursor {
+    color: #000;
+    background: #f0f0f0;
+  }
+*/
+</style>
+<script src="/_static/term.js"></script>
+<script src="/_static/pyxterm.js"></script>
+<script>
+;(function() {
+  var self = this;
+  function resize() {
+    var rows = Math.max(2, Math.floor(window.innerHeight/self.termRowHeight)-1);
+    var cols = Math.max(3, Math.floor(window.innerWidth/self.termColWidth)-1);
+    console.log("resize:", self.termRowHeight, self.termColWidth, window.innerHeight, window.innerWidth, rows, cols);
+    return {rows: rows, cols: cols};
+  }
+
+  window.onload = function() {
+    // Test size: 25x80
+    self.termRowHeight = 0.0 + 1.00*document.getElementById("dummy-screen").offsetHeight / 25;
+    self.termColWidth = 0.0 + (1.02*document.getElementById("dummy-screen-rows").offsetWidth / 80);
+    document.getElementById("dummy-screen").setAttribute("style", "display: none");
+
+    var socket = new WebSock();
+    socket.on('setup', function(params) {
+
+      var geom = resize();
+      self.pyxTerminal = new Pyxterm(socket,  // Expose for testing
+      params, {cols: geom.cols,
+        rows: geom.rows,
+        useStyle: true,
+        screenKeys: true,
+        cursorBlink: false
+      });
+
+    window.onresize = function() { 
+      var geom = resize();
+      self.pyxTerminal.resize(geom.cols, geom.rows);
+      socket.emit("set_size", geom.rows, geom.cols, window.innerHeight, window.innerWidth);
+    };
+    self.pyxSocket = socket;    // Expose for testing
+    });
+  };
+
+}).call(this);
+</script>
+</head>
+<body>
+<!-- test size: 25x80 -->
+<pre id="dummy-screen" style="visibility:hidden; border: white solid 5px; font-family: &quot;DejaVu Sans Mono&quot;, &quot;Liberation Mono&quot;, monospace; font-size: 11px;">0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+<span id="dummy-screen-rows" style="visibility:hidden;">01234567890123456789012345678901234567890123456789012345678901234567890123456789</span>
+</body>

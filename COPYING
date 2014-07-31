@@ -1,0 +1,9 @@
+Unless otherwise indicated, pyxterm files are distributed
+under the BSD License (see LICENSE.txt).
+
+This package also includes other bundled open source
+components which are governed by their own licenses,
+as indicated in the respective files. These include:
+
+  pyxshell.py: Public Domain
+  index.html, term.js, pyxterm.js: MIT
