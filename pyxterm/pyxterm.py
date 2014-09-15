@@ -484,7 +484,7 @@ def kill_remote(term_path, user):
             tsocket.close()
     try:
         Term_manager.kill_term(term_path)
-    except Exception as excp:
+    except Exception:
         pass
 
 class GoogleOAuth2LoginHandler(tornado.web.RequestHandler, tornado.auth.GoogleOAuth2Mixin):
