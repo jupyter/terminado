@@ -27,11 +27,6 @@ try:
 except ImportError:
     import Queue as queue
 
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
 import sys
 if sys.version_info[0] < 3:
     byte_code = ord
@@ -48,7 +43,6 @@ import re
 import select
 import shlex
 import signal
-import socket
 import struct
 import subprocess
 import traceback
@@ -56,7 +50,6 @@ import threading
 import time
 import termios
 import tty
-import uuid
 
 import random
 try:

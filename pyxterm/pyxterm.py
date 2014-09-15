@@ -59,23 +59,13 @@ except ImportError:
 import base64
 import cgi
 import collections
-import datetime
-import functools
-import hmac
 import logging
 import os
-import re
 import ssl
 import sys
 import threading
 import time
 import uuid
-
-import random
-try:
-    random = random.SystemRandom()
-except NotImplementedError:
-    import random
 
 try:
     import ujson as json
