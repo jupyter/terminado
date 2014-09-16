@@ -21,12 +21,6 @@ Type exactly two Control-D's to exit the shell
 from __future__ import absolute_import, print_function, with_statement
 
 
-# Python3-friendly imports
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
 import sys
 if sys.version_info[0] < 3:
     byte_code = ord
@@ -41,7 +35,6 @@ import os
 import pty
 import re
 import select
-import shlex
 import signal
 import struct
 import subprocess
@@ -77,31 +70,6 @@ TERM_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")   # Allowed terminal names
 def make_term_cookie():
     return "%016d" % random.randrange(10**15, 10**16)
 
-def command_output(command_args, **kwargs):
-    """ Executes a command and returns the string tuple (stdout, stderr)
-    keyword argument timeout can be specified to time out command (defaults to 15 sec)
-    """
-    timeout = kwargs.pop("timeout", 15)
-    def command_output_aux():
-        try:
-            proc = subprocess.Popen(command_args, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            return proc.communicate()
-        except Exception as excp:
-            return "", str(excp)
-    if not timeout:
-        return command_output_aux()
-
-    exec_queue = queue.Queue()
-    def execute_in_thread():
-        exec_queue.put(command_output_aux())
-    thrd = threading.Thread(target=execute_in_thread)
-    thrd.start()
-    try:
-        return exec_queue.get(block=True, timeout=timeout)
-    except queue.Empty:
-        return "", "Timed out after %s seconds" % timeout
-
 def set_tty_speed(fd, baudrate=termios.B230400):
     tem_settings = termios.tcgetattr(fd)
     tem_settings[4:6] = (baudrate, baudrate)
@@ -126,10 +94,6 @@ def match_program_name(name):
         if cmd_comps[0].endswith("/"+name):
             return cmd_comps[0]
     return ""
-
-def shlex_split_str(line):
-    # Avoid NULs introduced by shlex.split when splitting unicode
-    return shlex.split(line if isinstance(line, str) else line.encode("utf-8", "replace"))
 
 def setup_logging(log_level=logging.ERROR, filename="", file_level=None):
     file_level = file_level or log_level
