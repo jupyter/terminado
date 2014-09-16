@@ -51,12 +51,10 @@ from __future__ import absolute_import, print_function, with_statement
 
 # Python3-friendly imports
 try:
-    from urllib.parse import urlparse, parse_qs, urlencode
+    from urllib.parse import urlparse, parse_qs
 except ImportError:
     from urlparse import urlparse, parse_qs
-    from urllib import urlencode
 
-import base64
 import cgi
 import collections
 import logging
@@ -103,7 +101,7 @@ COOKIE_TIMEOUT = 86400
 AUTH_DIGITS = 12    # Form authentication code hex-digits
                     # Note: Less than half of the 32 hex-digit state id should be used for form authentication
 
-AUTH_TYPES = ("none", "ssh", "login", "google")
+AUTH_TYPES = ("none", "ssh", "login")
 
 def cgi_escape(s):
     return cgi.escape(s) if s else ""
@@ -276,9 +274,6 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         authstate = self.get_request_state(self.request)
         if authstate:
             return authstate
-        if Term_settings["auth_type"] == "google":
-            # State must be added by Google auth
-            return None
         return self.add_state()
 
     def open(self):
@@ -301,11 +296,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         authstate = self.term_authenticate()
         if not authstate:
-            if Term_settings["auth_type"] == "google":
-                gauth_url = "/_gauth/%s?cauth=%s" % (self.term_reqpath, self.get_connect_cookie())
-                self.term_remote_call("document", BANNER_HTML+'<p><h3><a href="%s">Click here</a> to initiate Google authentication </h3>' % gauth_url)
-            else:
-                logging.error("TermSocket.open: ERROR authentication failed")
+            logging.error("TermSocket.open: ERROR authentication failed")
             self.close()
             return
 
@@ -335,7 +326,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if pyxshell.TERM_NAME_RE.match(path_name):
             term_name = None if path_name == "new" else path_name
             # Require access for ssh/login auth types (because there is no user authentication)
-            access_code = "" if Term_settings["auth_type"] in ("none", "google") else self.term_authstate["state_id"]
+            access_code = "" if Term_settings["auth_type"] == "none" else self.term_authstate["state_id"]
             self.term_path, self.term_cookie, alert_msg = Term_manager.terminal(term_name=term_name, access_code=access_code)
         else:
             alert_msg = "Invalid terminal name '%s'; follow identifier rules" % path_name
@@ -487,119 +478,6 @@ def kill_remote(term_path, user):
     except Exception:
         pass
 
-class GoogleOAuth2LoginHandler(tornado.web.RequestHandler, tornado.auth.GoogleOAuth2Mixin):
-    @tornado.gen.coroutine
-    def get(self):
-        if self._OAUTH_SETTINGS_KEY not in self.settings or not self.settings[self._OAUTH_SETTINGS_KEY]["key"]:
-            self.setup_msg("Google Authentication has not yet been set up for this server.")
-            return
-        ##logging.error("GoogleOAuth2LoginHandler: req=%s", self.request.uri)
-        auth_uri = Term_settings["server_url"]+"/_gauth"
-        if not self.get_argument('code', False):
-            term_cauth = self.get_argument("term_cauth", "")
-            term_path = "/".join(self.request.path.split("/")[2:]) # Strip out /_gauth from path
-            if term_path == "_info":
-                self.setup_msg("Google Authentication Setup Instructions")
-                return
-
-            state_param = ",".join([term_path, term_cauth])
-            yield self.authorize_redirect(
-                redirect_uri=auth_uri,
-                client_id=self.settings['google_oauth']['key'],
-                scope=['profile', 'email'],
-                response_type='code',
-                extra_params={'approval_prompt': 'auto', 'state': state_param})
-        else:
-            try:
-                state_value = self.get_argument('state', "")
-                user = yield self.get_authenticated_user(
-                    redirect_uri=auth_uri,
-                    code=self.get_argument('code'))
-                
-                comps = user['id_token'].split('.')
-                if len(comps) != 3:
-                    raise ErrorMessage('Wrong number of comps in Google id token: %s' % (user,)) 
-
-                b64string = comps[1].encode('ascii') 
-                padded = b64string + '=' * (4 - len(b64string) % 4) 
-                user_info = json.loads(base64.urlsafe_b64decode(padded))
-
-                vals = state_value.split(",")
-                if len(vals) != 2: 
-                    raise ErrorMessage('Invalid state values: %s' % state_value)
-                term_path, term_cauth = vals
-
-                term_email = user_info.get("email", "").lower()
-                if not term_email or not user_info.get("email_verified", False):
-                    raise ErrorMessage("GoogleOAuth2LoginHandler: No valid email in user info")
-                if term_path == "_test":
-                    self.write(BANNER_HTML+'<p>Google authentication test succeeded for '+term_email)
-                    self.finish()
-                    return
-
-                if Term_settings["auth_emails"] and term_email not in Term_settings["auth_emails"]:
-                    self.write(BANNER_HTML+'<p>Account <em>%s</em> not authorized for access.<p><a href="https://accounts.google.com/AccountChooser?hl=en">Click here</a> to sign in with a different Google account' % term_email)
-                    self.finish()
-                    return
-
-                email_name, email_domain = term_email.split("@")
-                term_user = email_name.replace(".","")
-
-                authstate = None
-                state_id = self.get_cookie(COOKIE_NAME)
-                if state_id:
-                    authstate = TermSocket.get_state(state_id)
-                    if authstate and (authstate.get("email","") != term_email or authstate.get("user","") != term_user):
-                        TermSocket.drop_state(state_id)
-                        authstate = None
-                if not authstate:
-                    authstate = TermSocket.add_state(user=term_user, email=term_email)
-                    self.set_cookie(COOKIE_NAME, authstate["state_id"])
-
-                query = {}
-                if term_cauth:
-                    query["cauth"] = term_cauth
-                url = "/"+term_path
-                if query:
-                    url += "?"+urlencode(query)
-                logging.info("GoogleOAuth2LoginHandler: email=%s, url=%s, %s", term_email, url, user_info)
-                self.redirect(url)
-            except Exception as excp:
-                logging.error("Error in Google Authentication: "+str(excp))
-                self.write(BANNER_HTML+'<p>Error in Google Authentication: '+(str(excp) if isinstance(excp, ErrorMessage) else ""))
-                self.finish()
-
-    def setup_msg(self, header):
-        msg = """<pre><em>%s</em>
-<p>
-If you are the administrator, please create the file
-<b>~/.pyxterm.json</b> for the user account running <b>pyxterm</b>.
-The file should contain the following Google OAuth info:<br>
-    <b>{"google_oauth": {"key": "...", "secret": "..."},
-        "auth_emails": ["user1@gmail.com", "user2@gmail.com"] }}</b>
-
-Ensure that your web application has the following URI settings:
-
- <em>Authorized Javascript origins:</em> <b>%s</b>
-
- <em>Authorized Redirect URI:</em> <b>%s/_gauth</b>
-
-If you have not set up the pyxterm web app for Google authentication, here is how to do it:
-    * Go to the Google Dev Console at <a href="https://console.developers.google.com" target="_blank">https://console.developers.google.com</a>
-    * Select a project, or create a new one.
-    * In the sidebar on the left, select <em>APIs & Auth</em>.
-    * In the sidebar on the left, select <em>Consent Screen</em> to customize the Product name etc.
-    * In the sidebar on the left, select <em>Credentials</em>.
-    * In the OAuth section of the page, select <em>Create New Client ID</em>.
-    * Edit settings to set the Authorized URIs to the values shown above.
-    * Copy the web application "Client ID key" and "Client secret" to the settings file
-    * Restart the server
-</pre>
-"""
-        self.write(msg % (header, Term_settings["server_url"], Term_settings["server_url"]))
-        self.finish()
-        return
-
 def run_server(options, args):
     global IO_loop, Http_server, Term_settings, Term_manager
     import signal
@@ -649,20 +527,9 @@ def run_server(options, args):
 
     app_settings = {"log_function": lambda x:None}
 
-    if options.auth_type == "google":
-        if "google_oauth" not in pyx_settings:
-            sys.exit("'google_oauth' client ID and secret should be provided in settings file %s" % pyx_settings_file)
-        app_settings["google_oauth"] = pyx_settings["google_oauth"]
-
-        if "auth_emails" not in pyx_settings:
-            sys.exit("'auth_emails' list should be provided in settings file %s" % pyx_settings_file)
-        auth_emails = [x.strip().lower() for x in pyx_settings["auth_emails"]]
-        Term_settings["auth_emails"] = set(auth_emails)
-        print("Authorized email addresses: %s" % (",".join(auth_emails) if auth_emails else "ALL"))
-
     Term_manager = pyxshell.TermManager(TermSocket.term_remote_callback, shell_command=shell_command, server_url="", term_settings=Term_settings)
 
-    handlers = [(r"/_gauth.*", GoogleOAuth2LoginHandler),   # Does not work with trailing slash!
+    handlers = [
                 (r"/_websocket/.*", TermSocket),
                 (STATIC_PREFIX+r"(.*)", tornado.web.StaticFileHandler, {"path": Doc_rootdir}),
                 (r"/().*", tornado.web.StaticFileHandler, {"path": Doc_rootdir, "default_filename": "index.html"}),
