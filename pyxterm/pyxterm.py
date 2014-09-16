@@ -147,10 +147,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     @classmethod
     def get_state(cls, state_id):
-        if state_id not in cls._term_states:
-            return None
-        state_value = cls._term_states[state_id]
-        return state_value
+        return cls._term_states.get(state_id, None)
 
     @classmethod
     def get_request_state(cls, request):
