@@ -109,15 +109,6 @@ def get_query_auth(state_id):
 def get_first_arg(query_data, argname, default=""):
     return query_data.get(argname, [default])[0]
 
-class ErrorMessage(Exception):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return str(self.value)
-
-
-
 
 class TermSocket(tornado.websocket.WebSocketHandler):
     _all_term_sockets = {}
