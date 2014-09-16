@@ -64,6 +64,7 @@ import sys
 import threading
 import time
 import uuid
+import webbrowser
 
 try:
     import ujson as json
@@ -577,7 +578,7 @@ def run_server(options, args):
 
     if options.terminal:
         try:
-            pyxshell.open_browser(new_url)
+            webbrowser.open_new_tab(new_url)
         except Exception as excp:
             print("Error in creating terminal; please open URL %s in browser (%s)" % (new_url, excp), file=sys.stderr)
 

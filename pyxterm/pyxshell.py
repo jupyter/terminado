@@ -102,18 +102,6 @@ def command_output(command_args, **kwargs):
     except queue.Empty:
         return "", "Timed out after %s seconds" % timeout
 
-def open_browser(url, browser=""):
-    if sys.platform.startswith("linux"):
-        command_args = ["xdg-open"]
-    else:
-        command_args = ["open"]
-        if browser:
-            command_args += ["-a", browser]
-
-    command_args.append(url)
-
-    return command_output(command_args, timeout=5)
-
 def set_tty_speed(fd, baudrate=termios.B230400):
     tem_settings = termios.tcgetattr(fd)
     tem_settings[4:6] = (baudrate, baudrate)
@@ -129,7 +117,7 @@ def set_tty_echo(fd, enabled):
 
 def match_program_name(name):
     """ Return full path to command name, if running. else null string"""
-    std_out, std_err = command_output(["ps", "aux"], timeout=1)
+    std_out = subprocess.check_output(["ps", "aux"], timeout=1, universal_newlines=True)
     for line in std_out.split('\n'):
         comps = line.split(None, 10)
         if not comps or not comps[-1].strip():
