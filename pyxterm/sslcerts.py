@@ -1,6 +1,9 @@
 import logging
+import os.path
 import shlex
+import ssl
 import subprocess
+import sys
 import threading
 
 # Python3-friendly imports
@@ -76,3 +79,43 @@ def ssl_cert_gen(certfile, keyfile="", hostname="localhost", cwd=None, new=False
             if std_err:
                 logging.warning("pyxterm: SSL client keygen %s %s", std_out, std_err)
     return fingerprint
+
+def prepare_ssl_options(options):
+    ssl_options = None
+    if options.https or options.client_cert:
+        if options.client_cert:
+            certfile = options.client_cert
+            cert_dir = os.path.dirname(certfile) or os.getcwd()
+            if certfile.endswith(".crt"):
+                keyfile = certfile[:-4] + ".key"
+            else:
+                keyfile = ""
+        else:
+            cert_dir = "."
+            server_name = "localhost"
+            certfile = os.path.join(cert_dir, server_name+".pem")
+            keyfile = ""
+
+        new = not os.path.exists(certfile) and (not keyfile or not os.path.exists(keyfile))
+        print("Generating" if new else "Using", "SSL cert", certfile, file=sys.stderr)
+        fingerprint = ssl_cert_gen(certfile, keyfile, server_name, cwd=cert_dir, new=new, clientname="term-local" if options.client_cert else "")
+        if not fingerprint:
+            print("pyxterm: Failed to generate server SSL certificate", file=sys.stderr)
+            sys.exit(1)
+        print(fingerprint, file=sys.stderr)
+
+        ssl_options = {"certfile": certfile}
+        if keyfile:
+            ssl_options["keyfile"] = keyfile
+
+        if options.client_cert:
+            if options.client_cert == ".":
+                ssl_options["ca_certs"] = certfile
+            elif not os.path.exists(options.client_cert):
+                print("Client cert file %s not found" % options.client_cert, file=sys.stderr)
+                sys.exit(1)
+            else:
+                ssl_options["ca_certs"] = options.client_cert
+            ssl_options["cert_reqs"] = ssl.CERT_REQUIRED
+    
+    return ssl_options

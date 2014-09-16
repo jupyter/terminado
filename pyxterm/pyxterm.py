@@ -55,11 +55,9 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qs
 
-import cgi
 import collections
 import logging
 import os
-import ssl
 import sys
 import threading
 import time
@@ -72,7 +70,7 @@ except ImportError:
     import json
 
 import pyxshell
-from sslcerts import ssl_cert_gen
+from sslcerts import prepare_ssl_options
 
 import tornado.auth
 import tornado.httpserver
@@ -493,42 +491,7 @@ def run_server(options, args):
 
     IO_loop = tornado.ioloop.IOLoop.instance()
 
-    ssl_options = None
-    if options.https or options.client_cert:
-        if options.client_cert:
-            certfile = options.client_cert
-            cert_dir = os.path.dirname(certfile) or os.getcwd()
-            if certfile.endswith(".crt"):
-                keyfile = certfile[:-4] + ".key"
-            else:
-                keyfile = ""
-        else:
-            cert_dir = "."
-            server_name = "localhost"
-            certfile = os.path.join(cert_dir, server_name+".pem")
-            keyfile = ""
-
-        new = not os.path.exists(certfile) and (not keyfile or not os.path.exists(keyfile))
-        print("Generating" if new else "Using", "SSL cert", certfile, file=sys.stderr)
-        fingerprint = ssl_cert_gen(certfile, keyfile, server_name, cwd=cert_dir, new=new, clientname="term-local" if options.client_cert else "")
-        if not fingerprint:
-            print("pyxterm: Failed to generate server SSL certificate", file=sys.stderr)
-            sys.exit(1)
-        print(fingerprint, file=sys.stderr)
-
-        ssl_options = {"certfile": certfile}
-        if keyfile:
-            ssl_options["keyfile"] = keyfile
-
-        if options.client_cert:
-            if options.client_cert == ".":
-                ssl_options["ca_certs"] = certfile
-            elif not os.path.exists(options.client_cert):
-                print("Client cert file %s not found" % options.client_cert, file=sys.stderr)
-                sys.exit(1)
-            else:
-                ssl_options["ca_certs"] = options.client_cert
-            ssl_options["cert_reqs"] = ssl.CERT_REQUIRED
+    ssl_options = prepare_ssl_options(options)
 
     Http_server = tornado.httpserver.HTTPServer(application, ssl_options=ssl_options)
     Http_server.listen(http_port, address=http_host)
