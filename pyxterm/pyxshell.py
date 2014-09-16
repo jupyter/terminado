@@ -27,11 +27,6 @@ try:
 except ImportError:
     import Queue as queue
 
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
 import sys
 if sys.version_info[0] < 3:
     byte_code = ord
@@ -48,7 +43,6 @@ import re
 import select
 import shlex
 import signal
-import socket
 import struct
 import subprocess
 import traceback
@@ -56,7 +50,6 @@ import threading
 import time
 import termios
 import tty
-import uuid
 
 import random
 try:
@@ -263,8 +256,9 @@ class Terminal(object):
         winsz = termios.TIOCSWINSZ if termios.TIOCSWINSZ < 0 else struct.unpack('i',struct.pack('I',termios.TIOCSWINSZ))[0]
         fcntl.ioctl(self.fd, winsz, struct.pack("HHHH",height,width,0,0))
 
-    def needs_updating(self):
-        return (self.update_needed or self.output_time > self.update_time) and cur_time-self.update_time > UPDATE_INTERVAL
+    def needs_updating(self, cur_time):
+        return (self.update_needed or self.output_time > self.update_time) \
+                and cur_time-self.update_time > UPDATE_INTERVAL
 
     def update(self):
         self.update_time = time.time()
@@ -636,7 +630,7 @@ class TermManager(object):
                 for term_name in fd_dict.values():
                     term = self.terminals.get(term_name)
                     if term:
-                        if term.needs_updating:
+                        if term.needs_updating(cur_time):
                             try:
                                 self.term_update(term_name)
                             except Exception as excp:

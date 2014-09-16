@@ -59,23 +59,13 @@ except ImportError:
 import base64
 import cgi
 import collections
-import datetime
-import functools
-import hmac
 import logging
 import os
-import re
 import ssl
 import sys
 import threading
 import time
 import uuid
-
-import random
-try:
-    random = random.SystemRandom()
-except NotImplementedError:
-    import random
 
 try:
     import ujson as json
@@ -423,7 +413,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                                                              "content_encoding": kwargs.get("content_encoding",""),
                                                              "content_length": len(content)} ]) + "\n\n"
                 content_prefix = json_prefix.encode("utf-16")
-                self.term_write(json_prefix+content, binary=True)
+                self.term_write(content_prefix+content, binary=True)
         except Exception as excp:
             logging.error("term_remote_call: ERROR %s", excp)
 
@@ -487,14 +477,14 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
 def kill_remote(term_path, user):
     for client_id in TermSocket.get_path_termsockets(term_path):
-        tsocket = GTSocket.get_termsocket(client_id)
+        tsocket = TermSocket.get_termsocket(client_id)
         if tsocket:
             tsocket.term_remote_call("document", BANNER_HTML+'<p>CLOSED TERMINAL<p><a href="/">Home</a>')
             tsocket.on_close()
             tsocket.close()
     try:
         Term_manager.kill_term(term_path)
-    except Exception as excp:
+    except Exception:
         pass
 
 class GoogleOAuth2LoginHandler(tornado.web.RequestHandler, tornado.auth.GoogleOAuth2Mixin):
