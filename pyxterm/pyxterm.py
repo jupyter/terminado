@@ -477,7 +477,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
 def kill_remote(term_path, user):
     for client_id in TermSocket.get_path_termsockets(term_path):
-        tsocket = GTSocket.get_termsocket(client_id)
+        tsocket = TermSocket.get_termsocket(client_id)
         if tsocket:
             tsocket.term_remote_call("document", BANNER_HTML+'<p>CLOSED TERMINAL<p><a href="/">Home</a>')
             tsocket.on_close()
