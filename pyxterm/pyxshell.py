@@ -566,7 +566,7 @@ class TermManager(object):
                     return
                 term.pty_read(data)
             except (KeyError, IOError, OSError):
-                logging.err("pyxshell: Error in reading from %s; closing it" % term_name)
+                logging.error("pyxshell: Error in reading from %s; closing it" % term_name)
                 self.kill_term(term_name)
 
     def term_write(self, term_name, data):
