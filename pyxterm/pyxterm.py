@@ -413,7 +413,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                                                              "content_encoding": kwargs.get("content_encoding",""),
                                                              "content_length": len(content)} ]) + "\n\n"
                 content_prefix = json_prefix.encode("utf-16")
-                self.term_write(json_prefix+content, binary=True)
+                self.term_write(content_prefix+content, binary=True)
         except Exception as excp:
             logging.error("term_remote_call: ERROR %s", excp)
 
