@@ -127,21 +127,6 @@ def set_tty_echo(fd, enabled):
         tem_settings[3] &= ~termios.ECHO
     termios.tcsetattr(fd, termios.TCSADRAIN, tem_settings)
 
-def is_executable(filepath):
-    return os.path.isfile(filepath) and os.access(filepath, os.X_OK)
-
-def which(filepath, add_path=[]):
-    filedir, filename = os.path.split(filepath)
-    if filedir:
-        if is_executable(filepath):
-            return filepath
-    else:
-        for path in os.environ["PATH"].split(os.pathsep) + add_path:
-            whichpath = os.path.join(path, filepath)
-            if is_executable(whichpath):
-                return whichpath
-    return None
-
 def match_program_name(name):
     """ Return full path to command name, if running. else null string"""
     std_out, std_err = command_output(["ps", "aux"], timeout=1)

@@ -103,9 +103,6 @@ AUTH_DIGITS = 12    # Form authentication code hex-digits
 
 AUTH_TYPES = ("none", "ssh", "login")
 
-def cgi_escape(s):
-    return cgi.escape(s) if s else ""
-
 def get_query_auth(state_id):
     return state_id[:AUTH_DIGITS]
 
