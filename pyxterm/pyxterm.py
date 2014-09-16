@@ -274,8 +274,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if pyxshell.TERM_NAME_RE.match(path_name):
             term_name = None if path_name == "new" else path_name
             # Require access for ssh/login auth types (because there is no user authentication)
-            access_code = "" if Term_settings["auth_type"] == "none" else self.term_authstate["state_id"]
-            self.term_path, self.term_cookie, alert_msg = Term_manager.terminal(term_name=term_name, access_code=access_code)
+            auth_type = self.application.term_settings['auth_type']
+            access_code = "" if auth_type == "none" else self.term_authstate["state_id"]
+            self.term_path, self.term_cookie, alert_msg = \
+                    self.application.term_manager.terminal(term_name=term_name,
+                                                           access_code=access_code)
         else:
             alert_msg = "Invalid terminal name '%s'; follow identifier rules" % path_name
 
@@ -403,32 +406,41 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                 for matchpath in matchpaths:
                     if command[0] == "stdin":
                         text = command[1].replace("\r\n","\n").replace("\r","\n")
-                        Term_manager.term_write(matchpath, text)
+                        self.application.term_manager.term_write(matchpath, text)
                     else:
-                        Term_manager.remote_term_call(matchpath, *command)
+                        self.application.term_manager.remote_term_call(matchpath, *command)
                     if kill_term:
-                        kill_remote(matchpath, from_user)
+                        self.kill_remote(matchpath, from_user)
 
         except Exception as excp:
             logging.error("TermSocket.on_message: ERROR %s", excp)
             self.term_remote_call("errmsg", str(excp))
             return
 
-def kill_remote(term_path, user):
-    for client_id in TermSocket.get_path_termsockets(term_path):
-        tsocket = TermSocket.get_termsocket(client_id)
-        if tsocket:
-            tsocket.term_remote_call("document", BANNER_HTML+'<p>CLOSED TERMINAL<p><a href="/">Home</a>')
-            tsocket.on_close()
-            tsocket.close()
-    try:
-        Term_manager.kill_term(term_path)
-    except Exception:
-        pass
+    def kill_remote(self, term_path, user):
+        for client_id in TermSocket.get_path_termsockets(term_path):
+            tsocket = TermSocket.get_termsocket(client_id)
+            if tsocket:
+                tsocket.term_remote_call("document", BANNER_HTML+'<p>CLOSED TERMINAL<p><a href="/">Home</a>')
+                tsocket.on_close()
+                tsocket.close()
+        try:
+            self.application.term_manager.kill_term(term_path)
+        except Exception:
+            pass
+
+class Application(tornado.web.Application):
+    def __init__(self, term_manager, term_settings, **kwargs):
+        self.term_manager = term_manager
+        self.term_settings = term_settings
+        handlers = [
+                (r"/_websocket/.*", TermSocket),
+                (STATIC_PREFIX+r"(.*)", tornado.web.StaticFileHandler, {"path": Doc_rootdir}),
+                (r"/().*", tornado.web.StaticFileHandler, {"path": Doc_rootdir, "default_filename": "index.html"}),
+                ]
+        super(Application, self).__init__(handlers, **kwargs)
 
 def run_server(options, args):
-    global IO_loop, Http_server, Term_settings, Term_manager
-    import signal
 
     http_port = options.port
     http_host = options.host
@@ -459,21 +471,18 @@ def run_server(options, args):
 
     tem_str = options.term_options.strip().replace(" ","")
     term_options = set(tem_str.split(",") if tem_str else [])
-    Term_settings = {"type": options.term_type, "max_terminals": options.max_terminals,
+    term_settings = {"type": options.term_type, "max_terminals": options.max_terminals,
                      "https": options.https, "logging": options.logging,
                      "options": term_options, "server_url": server_url, "auth_type": options.auth_type}
 
     app_settings = {"log_function": lambda x:None}
 
-    Term_manager = pyxshell.TermManager(TermSocket.term_remote_callback, shell_command=shell_command, server_url="", term_settings=Term_settings)
+    term_manager = pyxshell.TermManager(TermSocket.term_remote_callback,
+                                        shell_command=shell_command, server_url="",
+                                        term_settings=term_settings)
 
-    handlers = [
-                (r"/_websocket/.*", TermSocket),
-                (STATIC_PREFIX+r"(.*)", tornado.web.StaticFileHandler, {"path": Doc_rootdir}),
-                (r"/().*", tornado.web.StaticFileHandler, {"path": Doc_rootdir, "default_filename": "index.html"}),
-                ]
-
-    application = tornado.web.Application(handlers, **app_settings)
+    application = Application(term_manager=term_manager, term_settings=term_settings,
+                              **app_settings)
 
     ##logging.warning("DocRoot: "+Doc_rootdir);
 
@@ -498,11 +507,9 @@ def run_server(options, args):
             print("Error in creating terminal; please open URL %s in browser (%s)" % (new_url, excp), file=sys.stderr)
 
     def stop_server():
-        global Http_server
         print("\nStopping server", file=sys.stderr)
         if Http_server:
             Http_server.stop()
-            Http_server = None
         def stop_server_aux():
             IO_loop.stop()
 
@@ -527,8 +534,8 @@ def run_server(options, args):
         print("Interrupted", file=sys.stderr)
 
     finally:
-        if Term_manager:
-            Term_manager.shutdown()
+        if term_manager:
+            term_manager.shutdown()
     IO_loop.add_callback(stop_server)
 
 def main():
