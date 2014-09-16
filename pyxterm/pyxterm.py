@@ -515,16 +515,6 @@ def run_server(options, args):
                      "https": options.https, "logging": options.logging,
                      "options": term_options, "server_url": server_url, "auth_type": options.auth_type}
 
-    pyx_settings_file = os.path.join(os.path.expanduser("~"), ".pyxterm.json")
-    pyx_settings = {}
-    if os.path.isfile(pyx_settings_file):
-        try:
-            with open(pyx_settings_file) as f:
-                pyx_settings = json.loads(f.read().strip())
-                print("***** Read settings from", pyx_settings_file, file=sys.stderr)
-        except Exception as excp:
-            sys.exit("Error in reading settings file %s: %s" % (pyx_settings_file, excp))
-
     app_settings = {"log_function": lambda x:None}
 
     Term_manager = pyxshell.TermManager(TermSocket.term_remote_callback, shell_command=shell_command, server_url="", term_settings=Term_settings)
