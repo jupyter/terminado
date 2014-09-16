@@ -127,28 +127,6 @@ def match_program_name(name):
             return cmd_comps[0]
     return ""
 
-def getcwd(pid):
-    """Return working directory of running process
-    Note: This will return os.path.realpath of current directory (eliminating symbolic links),
-    which may differ from the $PWD value
-    """
-    if sys.platform.startswith("linux"):
-        command_args = ["pwdx", str(pid)]
-    else:
-        command_args = ["lsof", "-a", "-p", str(pid), "-d", "cwd", "-Fn"]
-    std_out, std_err = command_output(command_args, timeout=1)
-    if std_err:
-        logging.warning("getcwd: ERROR %s", std_err)
-        return ""
-    try:
-        if sys.platform.startswith("linux"):
-            return std_out.split()[1]
-        else:
-            return std_out.split("\n")[1][1:]
-    except Exception as excp:
-        logging.warning("getcwd: ERROR %s", excp)
-        return ""
-
 def shlex_split_str(line):
     # Avoid NULs introduced by shlex.split when splitting unicode
     return shlex.split(line if isinstance(line, str) else line.encode("utf-8", "replace"))
