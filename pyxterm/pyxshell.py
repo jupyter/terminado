@@ -64,8 +64,6 @@ IDLE_TIMEOUT = 300            # Idle timeout in seconds
 UPDATE_INTERVAL = 0.05        # Fullscreen update time interval
 CHUNK_BYTES = 4096            # Chunk size for receiving data in stdin
 
-TERM_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")   # Allowed terminal names
-
 # Helper functions
 def make_term_cookie():
     return "%016d" % random.randrange(10**15, 10**16)

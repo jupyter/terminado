@@ -58,6 +58,8 @@ except ImportError:
 import collections
 import logging
 import os
+import re
+import signal
 import sys
 import threading
 import time
@@ -93,6 +95,8 @@ BANNER_HTML = '<center><h2>pyxterm</h2></center>'
 
 STATIC_PATH = "_static"
 STATIC_PREFIX = "/"+STATIC_PATH+"/"
+
+TERM_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")   # Allowed terminal names
 
 MAX_COOKIE_STATES = 300
 COOKIE_NAME = "PYXTERM_AUTH"
@@ -271,7 +275,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         path_name = path_comps[0] if path_comps else "new"
 
-        if pyxshell.TERM_NAME_RE.match(path_name):
+        if TERM_NAME_RE.match(path_name):
             term_name = None if path_name == "new" else path_name
             # Require access for ssh/login auth types (because there is no user authentication)
             auth_type = self.application.term_settings['auth_type']
