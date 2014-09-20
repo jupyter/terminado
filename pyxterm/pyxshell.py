@@ -195,7 +195,7 @@ class Terminal(object):
         """ Transmit byte-encoded data back to user """
         self.output_time = time.time()
         self.update_needed = True
-        self.update_buf = data
+        self.update_buf += data
 
     def read(self):
         b = self.reply_buf
