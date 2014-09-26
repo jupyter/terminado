@@ -175,31 +175,13 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         return authstate
 
     def __init__(self, application, request, **kwargs):
-        self.check_client_cert()
-        logging.info("TermSocket.__init__: %s", request.uri)
-
         super(TermSocket, self).__init__(application, request, **kwargs)
+        logging.info("TermSocket.__init__: %s", request.uri)
 
         self.term_authstate = None
         self.term_path = ""
         self.term_cookie = ""
         self.term_client_id = None
-
-    def check_client_cert(self):
-        try:
-            self.client_cert = self.request.get_ssl_certificate()
-        except Exception:
-            self.client_cert = ""
-
-        self.common_name = ""
-        if self.client_cert:
-            try:
-                subject = dict([x[0] for x in self.client_cert["subject"]])
-                self.common_name = subject.get("commonName")
-            except Exception as excp:
-                logging.warning("pyxterm: client_cert ERROR %s", excp)
-        if self.client_cert:
-            logging.warning("pyxterm: client_cert=%s, name=%s", self.client_cert, self.common_name)
 
     def origin_check(self):
         if "Origin" in self.request.headers:
