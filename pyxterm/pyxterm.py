@@ -556,7 +556,7 @@ def main():
                       help="External port (default: same as port)")
     parser.add_option("", "--https", dest="https", default=False, action="store_true",
                       help="Enable https")
-    parser.add_option("", "--auth_type", dest="auth_type", default="ssh",
+    parser.add_option("", "--auth_type", dest="auth_type", default="none",
                       help="Authentication type: %s (default: ssh)" % "/".join(AUTH_TYPES))
     parser.add_option("", "--client_cert", dest="client_cert", default="",
                       help="Path to client CA cert (or '.')")
