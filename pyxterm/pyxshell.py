@@ -30,6 +30,7 @@ else:
 
 import errno
 import fcntl
+import itertools
 import logging
 import os
 import pty
@@ -284,11 +285,7 @@ class TermManager(object):
 
             else:
                 # New default terminal name
-                while True:
-                    self.name_count += 1
-                    term_name = "tty%s" % self.name_count
-                    if term_name not in self.terminals:
-                        break
+                term_name = self.next_available_name()
 
             # Create new terminal
             max_terminals = self.term_settings.get("max_terminals",0)
@@ -398,6 +395,12 @@ class TermManager(object):
                                                      cookie=cookie, access_code=access_code,
                                                      log=bool(self.log_file))
                 return term_name, cookie, ""
+
+    def next_available_name(self):
+        for n in itertools.count(start=1):
+            name = "tty%d" % n
+            if name not in self.terminals:
+                return name
 
     def term_env(self, term_name, cookie, height, width, winheight, winwidth, export=False):
         env = []

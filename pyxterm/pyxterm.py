@@ -51,9 +51,9 @@ from __future__ import absolute_import, print_function, with_statement
 
 # Python3-friendly imports
 try:
-    from urllib.parse import urlparse, parse_qs
+    from urllib.parse import urlparse
 except ImportError:
-    from urlparse import urlparse, parse_qs
+    from urlparse import urlparse
 
 import collections
 import logging
@@ -96,7 +96,9 @@ BANNER_HTML = '<center><h2>pyxterm</h2></center>'
 STATIC_PATH = "_static"
 STATIC_PREFIX = "/"+STATIC_PATH+"/"
 
-TERM_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")   # Allowed terminal names
+# Allowed terminal names
+TERM_NAME_RE_PART = "[a-z][a-z0-9_]*"
+TERM_NAME_RE = re.compile(r"^%s$" % TERM_NAME_RE_PART)
 
 MAX_COOKIE_STATES = 300
 COOKIE_NAME = "PYXTERM_AUTH"
@@ -172,17 +174,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         cls._term_states[state_id] = authstate
         return authstate
 
-    def __init__(self, *args, **kwargs):
-        self.term_request = args[1]
+    def __init__(self, application, request, **kwargs):
         self.check_client_cert()
-        logging.info("TermSocket.__init__: %s", self.term_request.uri)
+        logging.info("TermSocket.__init__: %s", request.uri)
 
-        self.term_query = self.term_request.query
-        self.term_reqpath = "/".join(self.term_request.path.split("/")[2:])  # Strip out /_websocket from path
-        if self.term_reqpath.endswith("/"):
-            self.term_reqpath = self.term_reqpath[:-1]
-
-        super(TermSocket, self).__init__(*args, **kwargs)
+        super(TermSocket, self).__init__(application, request, **kwargs)
 
         self.term_authstate = None
         self.term_path = ""
@@ -191,7 +187,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def check_client_cert(self):
         try:
-            self.client_cert = self.term_request.get_ssl_certificate()
+            self.client_cert = self.request.get_ssl_certificate()
         except Exception:
             self.client_cert = ""
 
@@ -206,15 +202,15 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             logging.warning("pyxterm: client_cert=%s, name=%s", self.client_cert, self.common_name)
 
     def origin_check(self):
-        if "Origin" in self.term_request.headers:
-            origin = self.term_request.headers.get("Origin")
+        if "Origin" in self.request.headers:
+            origin = self.request.headers.get("Origin")
         else:
-            origin = self.term_request.headers.get("Sec-Websocket-Origin", None)
+            origin = self.request.headers.get("Sec-Websocket-Origin", None)
 
         if not origin:
             return False
 
-        host = self.term_request.headers.get("Host").lower()
+        host = self.request.headers.get("Host").lower()
         ws_host = urlparse(origin).netloc.lower()
         if host == ws_host:
             return True
@@ -228,19 +224,13 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             return authstate
         return self.add_state()
 
-    def open(self):
+    def open(self, term_name):
         if not self.origin_check():
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
         logging.info("TermSocket.open:")
-        query_data = {}
-        if self.term_query:
-            try:
-                query_data = parse_qs(self.term_query)
-            except Exception:
-                pass
 
-        connect_auth = get_first_arg(query_data, "cauth")
+        connect_auth = self.get_query_argument("cauth", "")
         connect_data = self.check_connect_cookie(connect_auth)
         if connect_data is None:
             # Invalid connect cookie
@@ -254,37 +244,22 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         self.term_authstate = authstate
 
-        query_auth = get_first_arg(query_data, "qauth")
+        query_auth = self.get_query_argument("qauth", "")
+
         if not connect_auth and (not query_auth or query_auth != get_query_auth(self.term_authstate["state_id"])):
-            # Invalid query auth; clear any form data
-            query_data = {}
-
-        if not query_data:
             # Confirm request, if no form data
-            if self.term_reqpath:
-                ##logging.info("TermSocket.open: Confirm request %s", self.term_reqpath)
-                confirm_url = "/%s/?cauth=%s" % (self.term_reqpath, self.get_connect_cookie())
-                self.term_remote_call("document", BANNER_HTML+'<p><h3>Click to open terminal <a href="%s">%s</a></h3>' % (confirm_url, "/"+self.term_reqpath))
-                self.close()
-                return
-            else:
-                # Forget path
-                path_comps = []
-        else:
-            path_comps = self.term_reqpath.split("/")
+            ##logging.info("TermSocket.open: Confirm request %s", term_name)
+            confirm_url = "/%s/?cauth=%s" % (term_name, self.get_connect_cookie())
+            self.term_remote_call("document", BANNER_HTML+'<p><h3>Click to open terminal <a href="%s">%s</a></h3>' % (confirm_url, "/"+term_name))
+            self.close()
+            return
 
-        path_name = path_comps[0] if path_comps else "new"
-
-        if TERM_NAME_RE.match(path_name):
-            term_name = None if path_name == "new" else path_name
-            # Require access for ssh/login auth types (because there is no user authentication)
-            auth_type = self.application.term_settings['auth_type']
-            access_code = "" if auth_type == "none" else self.term_authstate["state_id"]
-            self.term_path, self.term_cookie, alert_msg = \
-                    self.application.term_manager.terminal(term_name=term_name,
-                                                           access_code=access_code)
-        else:
-            alert_msg = "Invalid terminal name '%s'; follow identifier rules" % path_name
+        # Require access for ssh/login auth types (because there is no user authentication)
+        auth_type = self.application.term_settings['auth_type']
+        access_code = "" if auth_type == "none" else self.term_authstate["state_id"]
+        self.term_path, self.term_cookie, alert_msg = \
+                self.application.term_manager.terminal(term_name=term_name,
+                                                       access_code=access_code)
 
         if alert_msg:
             logging.error(alert_msg)
@@ -292,7 +267,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.close()
             return
 
-        if path_name == "new" or not query_auth:
+        if not query_auth:
             redirect_url = "/%s/?qauth=%s" % (self.term_path, get_query_auth(self.term_authstate["state_id"]))
             self.term_remote_call("redirect", redirect_url, self.term_authstate["state_id"])
             self.close()
@@ -433,14 +408,23 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         except Exception:
             pass
 
+class NewTerminalHandler(tornado.web.RequestHandler):
+    """Redirect to an unused terminal name"""
+    def get(self):
+        # XXX: Race condition if two users hit /new ~ simultaneously
+        term_name = self.application.term_manager.next_available_name()
+        print(".. Redirecting", term_name)
+        self.redirect("/" + term_name, permanent=False)
+
 class Application(tornado.web.Application):
     def __init__(self, term_manager, term_settings, **kwargs):
         self.term_manager = term_manager
         self.term_settings = term_settings
         handlers = [
-                (r"/_websocket/.*", TermSocket),
+                (r"/_websocket/(%s)" % TERM_NAME_RE_PART, TermSocket),
                 (STATIC_PREFIX+r"(.*)", tornado.web.StaticFileHandler, {"path": Doc_rootdir}),
-                (r"/().*", tornado.web.StaticFileHandler, {"path": Doc_rootdir, "default_filename": "index.html"}),
+                (r"/new/?", NewTerminalHandler),
+                (r"/()tty\d+/?", tornado.web.StaticFileHandler, {"path": Doc_rootdir, "default_filename": "index.html"}),
                 ]
         super(Application, self).__init__(handlers, **kwargs)
 
