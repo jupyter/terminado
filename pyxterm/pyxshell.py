@@ -146,6 +146,7 @@ class Terminal(object):
 
         self.output_time = time.time()
         self.read_callbacks = []
+        self.kill_callbacks = []
 
     def init(self):
         pass
@@ -170,6 +171,13 @@ class Terminal(object):
         # Hack for buggy TIOCSWINSZ handling: treat large unsigned positive int32 values as negative (same bits)
         winsz = termios.TIOCSWINSZ if termios.TIOCSWINSZ < 0 else struct.unpack('i',struct.pack('I',termios.TIOCSWINSZ))[0]
         fcntl.ioctl(self.fd, winsz, struct.pack("HHHH",height,width,0,0))
+
+    def remote_call(self, method, *args, **kwargs):
+        bound_method = getattr(self, "rpc_"+method, None)
+        if not bound_method:
+            raise Exception("Invalid remote method "+method)
+        logging.info("Remote term call %s", method)
+        return bound_method(*args, **kwargs)
 
     def needs_updating(self, cur_time):
         return (self.update_needed or self.output_time > self.update_time) \
@@ -247,6 +255,16 @@ class Terminal(object):
         text = data.decode(self.term_encoding)
         for f in self.read_callbacks:
             f(text)
+
+    def kill(self):
+        try:
+            os.close(self.fd)
+            os.kill(self.pid, signal.SIGTERM)
+        except (IOError, OSError):
+            pass
+
+        for f in self.kill_callbacks:
+            f()
 
 class InvalidAccessCode(Exception):
     def __str__(self):

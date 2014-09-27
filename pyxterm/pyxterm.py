@@ -258,7 +258,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.close()
             return
 
+        # Hook up callbacks for pty events
         self.terminal.read_callbacks.append(self.on_pty_read)
+        self.terminal.kill_callbacks.append(self.on_pty_killed)
         loop = tornado.ioloop.IOLoop.instance()
         try:
             loop.add_handler(self.terminal.fd, self.terminal.read_ready, loop.READ)
@@ -383,8 +385,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                     text = command[1].replace("\r\n","\n").replace("\r","\n")
                     self.terminal.pty_write(text)
                 else:
-                    self.application.term_manager.remote_term_call(self.term_path, *command)
+                    self.terminal.remote_call(*command)
                 if kill_term:
+                    self.terminal.kill()
+                    self.application.term_manager.discard(self.term_path)
                     self.kill_remote(self.term_path, from_user)
 
         except Exception as excp:
@@ -392,17 +396,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.term_remote_call("errmsg", str(excp))
             return
 
-    def kill_remote(self, term_path, user):
-        for client_id in TermSocket.get_path_termsockets(term_path):
-            tsocket = TermSocket.get_termsocket(client_id)
-            if tsocket:
-                tsocket.term_remote_call("document", BANNER_HTML+'<p>CLOSED TERMINAL<p><a href="/">Home</a>')
-                tsocket.on_close()
-                tsocket.close()
-        try:
-            self.application.term_manager.kill_term(term_path)
-        except Exception:
-            pass
+    def on_pty_killed(self):
+        self.term_remote_call("document", BANNER_HTML+'<p>CLOSED TERMINAL<p><a href="/">Home</a>')
+        self.on_close()
+        self.close()
 
 class NewTerminalHandler(tornado.web.RequestHandler):
     """Redirect to an unused terminal name"""
