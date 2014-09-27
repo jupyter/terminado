@@ -152,9 +152,7 @@ class Terminal(object):
         pass
 
     def reset(self):
-        self.update_time = 0
-        self.update_needed = True
-        self.reply_buf = ""
+        pass
 
     def resize_buffer(self, height, width, winheight=0, winwidth=0, force=False):
         reset_flag = force or (self.width != width or self.height != height)
@@ -179,38 +177,8 @@ class Terminal(object):
         logging.info("Remote term call %s", method)
         return bound_method(*args, **kwargs)
 
-    def needs_updating(self, cur_time):
-        return (self.update_needed or self.output_time > self.update_time) \
-                and cur_time-self.update_time > UPDATE_INTERVAL
-
-    def update(self):
-        self.update_time = time.time()
-        self.update_needed = False
-        self.update_callback()
-
-    def update_callback(self, response_id=""):
-        if not self.update_buf:
-            return
-        self.manager.client_callback(self.term_name, response_id, "stdout", self.update_buf)
-        self.update_buf = ""
-
     def clear(self):
         self.update_buf = ""
-        self.update_needed = True
-
-    def reconnect(self, response_id=""):
-        self.update_callback(response_id=response_id)
-
-    def write(self, data):
-        """ Transmit byte-encoded data back to user """
-        self.output_time = time.time()
-        self.update_needed = True
-        self.update_buf += data
-
-    def read(self):
-        b = self.reply_buf
-        self.reply_buf = ""
-        return b
 
     def pty_write(self, data):
         assert isinstance(data, unicode), "Must write unicode data"
@@ -236,18 +204,6 @@ class Terminal(object):
                         time.sleep(0.01)
                     else:
                         raise excp
-
-    def pty_read(self, data):
-        assert isinstance(data, bytes), "Must read byte-encoded data"
-
-        # Decode data (raw binary data transmitted via terminal must use base64 encoding)
-        self.write(data.decode(self.term_encoding))
-
-        reply = self.read()   # Read any immediate reply to escape-sequence terminal queries
-        if reply:
-            # Send terminal response
-            assert isinstance(reply, unicode), "Must write unicode data"
-            os.write(self.fd, reply.encode(self.term_encoding))
 
     def read_ready(self, fd, events):
         assert fd == self.fd
@@ -525,48 +481,6 @@ class TermManager(object):
                         except Exception:
                             pass
 
-    def term_read(self, term_name):
-        with self.lock:
-            term = self.terminals.get(term_name)
-            if not term:
-                return
-            try:
-                data = os.read(term.fd, 65536)
-                if not data:
-                    logging.error("pyxshell: EOF in reading from %s; closing it" % term_name)
-                    self.term_update(term_name)
-                    self.kill_term(term_name)
-                    return
-                term.pty_read(data)
-            except (KeyError, IOError, OSError):
-                logging.error("pyxshell: Error in reading from %s; closing it" % term_name)
-                self.kill_term(term_name)
-
-    def term_write(self, term_name, data):
-        ##logging.info("term_write: %s '%s'", term_name, data[:80])
-        with self.lock:
-            term = self.terminals.get(term_name)
-            if not term:
-                return
-            try:
-                term.pty_write(data)
-            except (IOError, OSError) as excp:
-                logging.error("pyxshell: Error in writing to %s (%s %s); closing it", term_name, excp.__class__, excp)
-                self.kill_term(term_name)
-
-    def term_update(self, term_name):
-        with self.lock:
-            term = self.terminals.get(term_name)
-            if term:
-                term.update()
-
-    def reconnect(self, term_name, response_id=""):
-        with self.lock:
-            term = self.terminals.get(term_name)
-            if not term:
-                return
-            term.reconnect(response_id=response_id)
-
     def loop(self):
         """ Multi-terminal I/O loop"""
         while self.running():
@@ -641,10 +555,8 @@ if __name__ == "__main__":
             sys.stdout.flush()
 
     Term_manager = TermManager(client_callback, shell_cmd, log_file=Log_file, log_level=logging.INFO)
-    Term_name, term_cookie, alert_msg = Term_manager.terminal(height=height, width=width)
+    terminal, Term_name, term_cookie = Term_manager.terminal(height=height, width=width)
 
-    if alert_msg:
-        print(alert_msg, file=sys.stderr)
     print("**Type Control-D Control-D to exit**", file=sys.stderr)
 
     test_str = b'\xe2\x94\x80 \xe2\x94\x82 \xe2\x94\x8c \xe2\x94\x98 \xe2\x94\x90 \xe2\x94\x94 \xe2\x94\x9c \xe2\x94\xa4 \xe2\x94\xac \xe2\x94\xb4 \xe2\x94\xbc \xe2\x95\x90 \xe2\x95\x91 \xe2\x95\x94 \xe2\x95\x9d \xe2\x95\x97 \xe2\x95\x9a \xe2\x95\xa0 \xe2\x95\xa3 \xe2\x95\xa6 \xe2\x95\xa9 \xe2\x95\xac'.decode("utf-8")
@@ -653,7 +565,7 @@ if __name__ == "__main__":
     try:
         tty.setraw(pty.STDIN_FILENO)
         expectEOF = False
-        Term_manager.term_write(Term_name, "echo '%s'\n" % test_str)
+        terminal.pty_write("echo '%s'\n" % test_str)
         while True:
             ##data = raw_input(Prompt)
             ##Term_manager.write(data+"\n")
@@ -666,7 +578,7 @@ if __name__ == "__main__":
             if not data:
                 raise EOFError
             str_data = data.decode("utf-8") if isinstance(data, bytes) else data
-            Term_manager.term_write(Term_name, str_data)
+            terminal.pty_write(str_data)
     except EOFError:
         Term_manager.shutdown()
     finally:
