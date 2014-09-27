@@ -55,7 +55,6 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-import collections
 import logging
 import os
 import re
@@ -117,70 +116,12 @@ def get_first_arg(query_data, argname, default=""):
 
 
 class TermSocket(tornado.websocket.WebSocketHandler):
-    _all_term_sockets = {}
-    _term_counter = [0]
-    _term_states = OrderedDict()
-    _term_connect_cookies = OrderedDict()
-
-    @classmethod
-    def get_connect_cookie(cls):
-        while len(cls._term_connect_cookies) > 100:
-            cls._term_connect_cookies.popitem(last=False)
-        new_cookie = uuid.uuid4().hex[:12]
-        cls._term_connect_cookies[new_cookie] = {}  # connect_data (from form submission)
-        return new_cookie
-
-    @classmethod
-    def check_connect_cookie(cls, cookie):
-        return cls._term_connect_cookies.pop(cookie, None)            
-
-    @classmethod
-    def update_connect_cookie(cls, cookie, connect_data):
-        if cookie not in cls._term_connect_cookies:
-            return False
-        cls._term_connect_cookies[cookie] = connect_data
-        return True
-
-    @classmethod
-    def get_state(cls, state_id):
-        return cls._term_states.get(state_id, None)
-
-    @classmethod
-    def get_request_state(cls, request):
-        if COOKIE_NAME not in request.cookies:
-            return None
-        cookie_value = request.cookies[COOKIE_NAME].value
-        state_value = cls.get_state(cookie_value)
-        if state_value:
-            return state_value
-        # Note: webcast auth will always be dropped
-        cls.drop_state(cookie_value)
-        return None
-
-    @classmethod
-    def drop_state(cls, state_id):
-        cls._term_states.pop(state_id, None)
-
-    @classmethod
-    def add_state(cls, user="", email=""):
-        state_id = uuid.uuid4().hex
-        authstate = {"state_id": state_id,
-                     "user": user,
-                     "email": email,
-                     "time": time.time()}
-        if len(cls._term_states) >= MAX_COOKIE_STATES:
-            cls._term_states.popitem(last=False)
-        cls._term_states[state_id] = authstate
-        return authstate
-
     def __init__(self, application, request, **kwargs):
         super(TermSocket, self).__init__(application, request, **kwargs)
         logging.info("TermSocket.__init__: %s", request.uri)
 
-        self.term_authstate = None
         self.term_path = ""
         self.term_cookie = ""
-        self.term_client_id = None
 
     def origin_check(self):
         if "Origin" in self.request.headers:
@@ -199,45 +140,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             logging.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
             return False
 
-    def term_authenticate(self):
-        authstate = self.get_request_state(self.request)
-        if authstate:
-            return authstate
-        return self.add_state()
-
     def open(self, term_name):
         if not self.origin_check():
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
         logging.info("TermSocket.open:")
-
-        connect_auth = self.get_query_argument("cauth", "")
-        connect_data = self.check_connect_cookie(connect_auth)
-        if connect_data is None:
-            # Invalid connect cookie
-            connect_auth = None
-
-        authstate = self.term_authenticate()
-        if not authstate:
-            logging.error("TermSocket.open: ERROR authentication failed")
-            self.close()
-            return
-
-        self.term_authstate = authstate
-
-        query_auth = self.get_query_argument("qauth", "")
-
-        if not connect_auth and (not query_auth or query_auth != get_query_auth(self.term_authstate["state_id"])):
-            # Confirm request, if no form data
-            ##logging.info("TermSocket.open: Confirm request %s", term_name)
-            confirm_url = "/%s/?cauth=%s" % (term_name, self.get_connect_cookie())
-            self.term_remote_call("document", BANNER_HTML+'<p><h3>Click to open terminal <a href="%s">%s</a></h3>' % (confirm_url, "/"+term_name))
-            self.close()
-            return
-
-        # Require access for ssh/login auth types (because there is no user authentication)
-        auth_type = self.application.term_settings['auth_type']
-        access_code = "" if auth_type == "none" else self.term_authstate["state_id"]
+        access_code = ""
     
         try:
             self.terminal, self.term_path, self.term_cookie = \
@@ -249,13 +157,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             logging.error(message)
             self.term_remote_call("alert", message)
             self.close()
-            return
-
-        if not query_auth:
-            redirect_url = "/%s/?qauth=%s" % (self.term_path, get_query_auth(self.term_authstate["state_id"]))
-            self.term_remote_call("redirect", redirect_url, self.term_authstate["state_id"])
-            self.close()
-            return
+            raise
 
         # Hook up callbacks for pty events
         self.terminal.read_callbacks.append(self.on_pty_read)
@@ -269,27 +171,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             if e.errno != errno.EEXIST:
                 raise
 
-        self.add_termsocket()
-
-        self.term_remote_call("setup", {"state_id": self.term_authstate["state_id"],
-                                        "client_id": self.term_client_id,
-                                        "term_path": self.term_path})
+        self.term_remote_call("setup", {"term_path": self.term_path})
         logging.info("TermSocket.open: Opened %s", self.term_path)
-
-    @classmethod
-    def get_termsocket(cls, client_id):
-        return cls._all_term_sockets.get(client_id)            
-
-    def add_termsocket(self):
-        self._term_counter[0] += 1
-        self.term_client_id = str(self._term_counter[0])
-
-        self._all_term_sockets[self.term_client_id] = self     
-        return self.term_client_id
-
-    def on_close(self):
-        logging.info("TermSocket.on_close: Closing %s", self.term_path)
-        self._all_term_sockets.pop(self.term_client_id, None)
 
     def on_pty_read(self, text):
         json_msg = json.dumps(['stdout', text])
@@ -377,7 +260,6 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     def on_pty_killed(self):
         json_msg = json.dumps(['disconnect', 1])
         self.write_message(json_msg)
-        self.on_close()
         self.close()
 
 class NewTerminalHandler(tornado.web.RequestHandler):

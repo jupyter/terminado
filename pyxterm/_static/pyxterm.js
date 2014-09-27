@@ -32,9 +32,6 @@ function Pyxterm(socket, remoteParams, options) {
     this.socket = socket;
     this.remoteParams = remoteParams;
 
-    if (remoteParams.state_id)
-	setAuth(remoteParams.state_id);
-
     Terminal.call(this, options)
 
     this.on('data', function(data) {
@@ -242,10 +239,8 @@ WebSock.prototype.on_document = function(html) {
     document.documentElement.innerHTML = html;
 }
 
-WebSock.prototype.on_redirect = function(url, state_id) {
+WebSock.prototype.on_redirect = function(url) {
     // Redirect to URL
-    if (state_id)
-	setAuth(state_id);
     window.location = url;
 }
 
