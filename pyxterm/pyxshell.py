@@ -303,89 +303,11 @@ class TermManager(object):
             pid, fd = pty.fork()
             if pid == 0:
                 ##logging.info("Forked pid=0 %s: %s", term_name, shell_command)
-
-                if len(shell_command) == 1 and not os.path.isabs(shell_command[0]):
-                    # Relative path shell command with no arguments
-                    if shell_command[0] in ("bash", "csh", "ksh", "sh", "tcsh", "zsh"):
-                        # Standard shell
-                        cmd = shell_command[:]
-                    elif shell_command[0] == "login":
-                        # Login access
-                        time.sleep(0.3)      # Needed for PTY output to appear
-                        if os.getuid() != 0:
-                            logging.error("Must be root to run login")
-                            os._exit(1)
-                        if os.path.exists("/bin/login"):
-                            cmd = ['/bin/login']
-                        elif os.path.exists("/usr/bin/login"):
-                            cmd = ['/usr/bin/login']
-                        else:
-                            logging.error("/bin/login or /usr/bin/login not found")
-                            os._exit(1)
-                    elif shell_command[0] == "ssh":
-                        # SSH access
-                        time.sleep(0.3)      # Needed for PTY output to appear
-                        sys.stderr.write("SSH Authentication\n")
-                        hostname = ssh_host or "localhost"
-                        if hostname != "localhost":
-                            sys.stdout.write("Hostname: %s\n" % hostname)
-                        sys.stdout.write("Username: ")
-                        username = sys.stdin.readline().strip()
-                        if re.match('^[0-9A-Za-z-_. ]+$', username):
-                            cmd = ['ssh']
-                            cmd += ['-oPreferredAuthentications=keyboard-interactive,password']
-                            cmd += ['-oNoHostAuthenticationForLocalhost=yes']
-                            cmd += ['-oLogLevel=FATAL']
-                            cmd += ['-F/dev/null', '-l', username, ssh_host]
-                        else:
-                            logging.error("Invalid username %s", username)
-                            os._exit(1)
-                    else:
-                        # Non-standard program; run via shell
-                        cmd = ['/bin/sh', '-c', shell_command[0]]
-                elif shell_command and os.path.isabs(shell_command[0]):
-                    # Absolute path shell command
-                    cmd = shell_command[:]
-                else:
-                    logging.error("Invalid shell command: %s", shell_command)
-                    os._exit(1)
-
-                env = {}
-                for var in os.environ.keys():
-                    if var not in NO_COPY_ENV:
-                        val = os.getenv(var)
-                        env[var] = val
-                        if var == "PATH" and Exec_path and Exec_path not in env[var]:
-                            # Prepend app bin directory to path
-                            env[var] = Exec_path + ":" + env[var]
+                env = dict(self.term_env(term_name, cookie, height, width, winheight, winwidth))
                 env["COLUMNS"] = str(width)
                 env["LINES"] = str(height)
-                env.update( dict(self.term_env(term_name, cookie, height, width, winheight, winwidth)) )
-
-                if term_dir:
-                    try:
-                        os.chdir(term_dir)
-                    except Exception:
-                        term_dir = ""
-                if not term_dir:
-                    # cd to HOME
-                    os.chdir(os.path.expanduser("~"))
-
-                ##logging.info("Exec %s: %s", cmd, env)
-
-                # Close all open fd (except stdin, stdout, stderr)
-                try:
-                    fdl = [int(i) for i in os.listdir('/proc/self/fd')]
-                except OSError:
-                    fdl = range(256)
-                for i in [i for i in fdl if i>2]:
-                    try:
-                        os.close(i)
-                    except OSError:
-                        pass
-
-                # Exec shell
-                os.execvpe(cmd[0], cmd, env)
+                self._exec_new_terminal(shell_command, working_dir=term_dir,
+                                        add_to_env=env, ssh_host=ssh_host)
             else:
                 logging.info("Forked pid=%d %s", pid, term_name)
                 fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd,fcntl.F_GETFL)|os.O_NONBLOCK)
@@ -401,6 +323,95 @@ class TermManager(object):
             name = "tty%d" % n
             if name not in self.terminals:
                 return name
+
+    def _exec_new_terminal(self, shell_command, working_dir="~",
+                           add_to_env=None, ssh_host=None):
+        """This is run in the child process after forking.
+        
+        It ends by calling :func:`os.execvpe` to launch the desired process.
+        """
+        if len(shell_command) == 1 and not os.path.isabs(shell_command[0]):
+            # Relative path shell command with no arguments
+            if shell_command[0] in ("bash", "csh", "ksh", "sh", "tcsh", "zsh"):
+                # Standard shell
+                cmd = shell_command[:]
+
+            elif shell_command[0] == "login":
+                # Login access
+                time.sleep(0.3)      # Needed for PTY output to appear
+                if os.getuid() != 0:
+                    logging.error("Must be root to run login")
+                    os._exit(1)
+                if os.path.exists("/bin/login"):
+                    cmd = ['/bin/login']
+                elif os.path.exists("/usr/bin/login"):
+                    cmd = ['/usr/bin/login']
+                else:
+                    logging.error("/bin/login or /usr/bin/login not found")
+                    os._exit(1)
+
+            elif shell_command[0] == "ssh":
+                # SSH access
+                time.sleep(0.3)      # Needed for PTY output to appear
+                sys.stderr.write("SSH Authentication\n")
+                hostname = ssh_host or "localhost"
+                if hostname != "localhost":
+                    sys.stdout.write("Hostname: %s\n" % hostname)
+                sys.stdout.write("Username: ")
+                username = sys.stdin.readline().strip()
+                if re.match('^[0-9A-Za-z-_. ]+$', username):
+                    cmd = ['ssh']
+                    cmd += ['-oPreferredAuthentications=keyboard-interactive,password']
+                    cmd += ['-oNoHostAuthenticationForLocalhost=yes']
+                    cmd += ['-oLogLevel=FATAL']
+                    cmd += ['-F/dev/null', '-l', username, ssh_host]
+                else:
+                    logging.error("Invalid username %s", username)
+                    os._exit(1)
+
+            else:
+                # Non-standard program; run via shell
+                cmd = ['/bin/sh', '-c', shell_command[0]]
+
+        elif shell_command and os.path.isabs(shell_command[0]):
+            # Absolute path shell command
+            cmd = shell_command[:]
+
+        else:
+            logging.error("Invalid shell command: %s", shell_command)
+            os._exit(1)
+
+        env = {}
+        for var in os.environ.keys():
+            if var not in NO_COPY_ENV:
+                val = os.getenv(var)
+                env[var] = val
+                if var == "PATH" and Exec_path and Exec_path not in env[var]:
+                    # Prepend app bin directory to path
+                    env[var] = Exec_path + ":" + env[var]
+        if add_to_env is not None:
+            env.update(add_to_env)
+
+        try:
+            os.chdir(working_dir)
+        except Exception:
+            os.chdir(os.path.expanduser("~"))
+
+        ##logging.info("Exec %s: %s", cmd, env)
+
+        # Close all open fd (except stdin, stdout, stderr)
+        try:
+            fdl = [int(i) for i in os.listdir('/proc/self/fd')]
+        except OSError:
+            fdl = range(256)
+        for i in [i for i in fdl if i>2]:
+            try:
+                os.close(i)
+            except OSError:
+                pass
+
+        # Exec shell
+        os.execvpe(cmd[0], cmd, env)
 
     def term_env(self, term_name, cookie, height, width, winheight, winwidth, export=False):
         env = []
