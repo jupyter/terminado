@@ -145,6 +145,7 @@ class Terminal(object):
         self.rpc_set_size(height, width, winheight, winwidth)
 
         self.output_time = time.time()
+        self.read_callbacks = []
 
     def init(self):
         pass
@@ -240,6 +241,13 @@ class Terminal(object):
             assert isinstance(reply, unicode), "Must write unicode data"
             os.write(self.fd, reply.encode(self.term_encoding))
 
+    def read_ready(self, fd, events):
+        assert fd == self.fd
+        data = os.read(self.fd, 65536)
+        text = data.decode(self.term_encoding)
+        for f in self.read_callbacks:
+            f(text)
+
 class InvalidAccessCode(Exception):
     def __str__(self):
         return "Invalid terminal access code"
@@ -253,7 +261,7 @@ def MaxTerminalsReached(Exception):
 
 class TermManager(object):
     def __init__(self, client_callback, shell_command=[], ssh_host="", server_url="",
-                 term_settings={}, log_file="", log_level=logging.ERROR):
+                 run_io_thread=False, term_settings={}, log_file="", log_level=logging.ERROR):
         """ Manages multiple terminals (create, communicate, destroy)
         """
         ##signal.signal(signal.SIGCHLD, signal.SIG_IGN)
@@ -272,11 +280,12 @@ class TermManager(object):
     
         self.terminals = {}
         self.lock = threading.RLock()
-        self.thread = threading.Thread(target=self.loop)
         self.alive = 1
         self.check_kill_idle = False
         self.name_count = 0
-        self.thread.start()
+        if run_io_thread:
+            self.thread = threading.Thread(target=self.loop)
+            self.thread.start()
 
     def terminal(self, term_name=None, height=25, width=80, winheight=0, winwidth=0, parent="",
                  access_code="", shell_command=[], ssh_host=""):
@@ -291,7 +300,7 @@ class TermManager(object):
                     if term.access_code and term.access_code != access_code:
                         raise InvalidAccessCode
                     term.rpc_set_size(height, width, winheight, winwidth)
-                    return (term_name, term.cookie)
+                    return (term, term_name, term.cookie)
 
             else:
                 # New default terminal name
@@ -321,12 +330,13 @@ class TermManager(object):
             else:
                 logging.info("Forked pid=%d %s", pid, term_name)
                 fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd,fcntl.F_GETFL)|os.O_NONBLOCK)
-                self.terminals[term_name] = Terminal(term_name, fd, pid, self,
+                term = Terminal(term_name, fd, pid, self,
                                                      height=height, width=width,
                                                      winheight=winheight, winwidth=winwidth,
                                                      cookie=cookie, access_code=access_code,
                                                      log=bool(self.log_file))
-                return term_name, cookie
+                self.terminals[term_name] = term
+                return term, term_name, cookie
 
     def next_available_name(self):
         for n in itertools.count(start=1):

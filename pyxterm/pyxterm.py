@@ -241,7 +241,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         access_code = "" if auth_type == "none" else self.term_authstate["state_id"]
     
         try:
-            self.term_path, self.term_cookie = \
+            self.terminal, self.term_path, self.term_cookie = \
                 self.application.term_manager.terminal(term_name=term_name,
                                                        access_code=access_code)
 
@@ -257,6 +257,16 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.term_remote_call("redirect", redirect_url, self.term_authstate["state_id"])
             self.close()
             return
+
+        self.terminal.read_callbacks.append(self.on_pty_read)
+        loop = tornado.ioloop.IOLoop.instance()
+        try:
+            loop.add_handler(self.terminal.fd, self.terminal.read_ready, loop.READ)
+        except OSError as e:
+            import errno
+            # We seem to get FileExistsError if the handler was already registered
+            if e.errno != errno.EEXIST:
+                raise
 
         self.add_termsocket()
 
@@ -299,6 +309,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                     termsocket.term_write(json_msg)
         except Exception as excp:
             logging.error("term_remote_callback: ERROR %s", excp)
+
+    def on_pty_read(self, text):
+        json_msg = json.dumps(['stdout', text])
+        self.write_message(json_msg)
 
     def term_remote_call(self, method, *args, **kwargs):
         """
@@ -365,16 +379,13 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                 send_cmd = False
 
             if send_cmd:
-                matchpaths = [self.term_path]
-
-                for matchpath in matchpaths:
-                    if command[0] == "stdin":
-                        text = command[1].replace("\r\n","\n").replace("\r","\n")
-                        self.application.term_manager.term_write(matchpath, text)
-                    else:
-                        self.application.term_manager.remote_term_call(matchpath, *command)
-                    if kill_term:
-                        self.kill_remote(matchpath, from_user)
+                if command[0] == "stdin":
+                    text = command[1].replace("\r\n","\n").replace("\r","\n")
+                    self.terminal.pty_write(text)
+                else:
+                    self.application.term_manager.remote_term_call(self.term_path, *command)
+                if kill_term:
+                    self.kill_remote(self.term_path, from_user)
 
         except Exception as excp:
             logging.error("TermSocket.on_message: ERROR %s", excp)
