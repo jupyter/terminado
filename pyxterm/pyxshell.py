@@ -234,12 +234,11 @@ def MaxTerminalsReached(Exception):
         return "Cannot create more than %d terminals" % self.max_terminals
 
 class TermManager(object):
-    def __init__(self, client_callback, shell_command=[], ssh_host="", server_url="",
+    def __init__(self, shell_command=[], ssh_host="", server_url="",
                  run_io_thread=False, term_settings={}, log_file="", log_level=logging.ERROR):
         """ Manages multiple terminals (create, communicate, destroy)
         """
         ##signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-        self.client_callback = client_callback  # Signature client_callback(term_name, client_id, method, *args)
         self.shell_command = shell_command
         self.ssh_host = ssh_host
         self.server_url = server_url

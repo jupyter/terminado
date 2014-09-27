@@ -118,7 +118,6 @@ def get_first_arg(query_data, argname, default=""):
 
 class TermSocket(tornado.websocket.WebSocketHandler):
     _all_term_sockets = {}
-    _all_term_paths = collections.defaultdict(set)
     _term_counter = [0]
     _term_states = OrderedDict()
     _term_connect_cookies = OrderedDict()
@@ -278,10 +277,6 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         logging.info("TermSocket.open: Opened %s", self.term_path)
 
     @classmethod
-    def get_path_termsockets(cls, path):
-        return cls._all_term_paths.get(path, set())
-
-    @classmethod
     def get_termsocket(cls, client_id):
         return cls._all_term_sockets.get(client_id)            
 
@@ -290,27 +285,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.term_client_id = str(self._term_counter[0])
 
         self._all_term_sockets[self.term_client_id] = self     
-        self._all_term_paths[self.term_path].add(self.term_client_id)
         return self.term_client_id
 
     def on_close(self):
         logging.info("TermSocket.on_close: Closing %s", self.term_path)
         self._all_term_sockets.pop(self.term_client_id, None)
-        if self.term_path in self._all_term_paths:
-            self._all_term_paths[self.term_path].discard(self.term_client_id)
-
-    @classmethod
-    def term_remote_callback(cls, term_path, client_id, method, *args):
-        client_ids = [client_id] if client_id else cls.get_path_termsockets(term_path)
-        try:
-            json_msg = json.dumps([method, args])
-            ##logging.info("term_remote_callback: %s, %s, %s", args, json.loads(json.dumps(args[0])) if args else "NONE", json_msg)
-            for client_id in client_ids:
-                termsocket = cls.get_termsocket(client_id)
-                if termsocket:
-                    termsocket.term_write(json_msg)
-        except Exception as excp:
-            logging.error("term_remote_callback: ERROR %s", excp)
 
     def on_pty_read(self, text):
         json_msg = json.dumps(['stdout', text])
@@ -465,8 +444,7 @@ def run_server(options, args):
 
     app_settings = {"log_function": lambda x:None}
 
-    term_manager = pyxshell.TermManager(TermSocket.term_remote_callback,
-                                        shell_command=shell_command, server_url="",
+    term_manager = pyxshell.TermManager(shell_command=shell_command, server_url="",
                                         term_settings=term_settings)
 
     application = Application(term_manager=term_manager, term_settings=term_settings,
