@@ -239,13 +239,16 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         # Require access for ssh/login auth types (because there is no user authentication)
         auth_type = self.application.term_settings['auth_type']
         access_code = "" if auth_type == "none" else self.term_authstate["state_id"]
-        self.term_path, self.term_cookie, alert_msg = \
+    
+        try:
+            self.term_path, self.term_cookie = \
                 self.application.term_manager.terminal(term_name=term_name,
                                                        access_code=access_code)
 
-        if alert_msg:
-            logging.error(alert_msg)
-            self.term_remote_call("alert", alert_msg)
+        except Exception as e:
+            message = str(e)
+            logging.error(message)
+            self.term_remote_call("alert", message)
             self.close()
             return
 

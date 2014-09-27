@@ -240,6 +240,16 @@ class Terminal(object):
             assert isinstance(reply, unicode), "Must write unicode data"
             os.write(self.fd, reply.encode(self.term_encoding))
 
+class InvalidAccessCode(Exception):
+    def __str__(self):
+        return "Invalid terminal access code"
+
+def MaxTerminalsReached(Exception):
+    def __init__(self, max_terminals):
+        self.max_terminals = max_terminals
+    
+    def __str__(self):
+        return "Cannot create more than %d terminals" % self.max_terminals
 
 class TermManager(object):
     def __init__(self, client_callback, shell_command=[], ssh_host="", server_url="",
@@ -279,9 +289,9 @@ class TermManager(object):
                 if term:
                     # Existing terminal; resize and return it
                     if term.access_code and term.access_code != access_code:
-                        return (term_name, "", "Invalid terminal access code")
+                        raise InvalidAccessCode
                     term.rpc_set_size(height, width, winheight, winwidth)
-                    return (term_name, term.cookie, "")
+                    return (term_name, term.cookie)
 
             else:
                 # New default terminal name
@@ -290,7 +300,7 @@ class TermManager(object):
             # Create new terminal
             max_terminals = self.term_settings.get("max_terminals",0)
             if max_terminals and len(self.terminals) >= max_terminals:
-                return ("", "", "Cannot create more than %d terminals" % max_terminals)
+                raise MaxTerminalsReached(max_terminals)
             cookie = make_term_cookie()
             logging.info("New terminal %s: %s", term_name, shell_command)
 
@@ -316,7 +326,7 @@ class TermManager(object):
                                                      winheight=winheight, winwidth=winwidth,
                                                      cookie=cookie, access_code=access_code,
                                                      log=bool(self.log_file))
-                return term_name, cookie, ""
+                return term_name, cookie
 
     def next_available_name(self):
         for n in itertools.count(start=1):
