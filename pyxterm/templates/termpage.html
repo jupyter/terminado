@@ -53,7 +53,7 @@
     self.termColWidth = 0.0 + (1.02*document.getElementById("dummy-screen-rows").offsetWidth / 80);
     document.getElementById("dummy-screen").setAttribute("style", "display: none");
 
-    var socket = new WebSock();
+    var socket = new WebSock("{{ws_url_path}}");
     socket.on('setup', function(params) {
 
       var geom = resize();

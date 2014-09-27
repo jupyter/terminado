@@ -406,14 +406,12 @@ class NewTerminalHandler(tornado.web.RequestHandler):
     def get(self):
         # XXX: Race condition if two users hit /new ~ simultaneously
         term_name = self.application.term_manager.next_available_name()
-        print(".. Redirecting", term_name)
         self.redirect("/" + term_name, permanent=False)
 
 class TerminalPageHandler(tornado.web.RequestHandler):
     """Render the /ttyX pages"""
-    def get(self, terminal_name):
-        print("Rendering for", terminal_name)
-        return self.render("termpage.html")
+    def get(self, term_name):
+        return self.render("termpage.html", ws_url_path="/_websocket/"+term_name)
 
 class Application(tornado.web.Application):
     def __init__(self, term_manager, term_settings, **kwargs):

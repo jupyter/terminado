@@ -68,7 +68,7 @@ inherits(Pyxterm, Terminal);
  * WebSocket
  */
 
-function WebSock(term_path) {
+function WebSock(ws_url_path) {
     var self = this;
 
     EventEmitter.call(this);
@@ -77,14 +77,8 @@ function WebSock(term_path) {
     this.opened = false;
     this.closed = false;
 
-    if (!term_path) {
-	var comps = window.location.pathname.split("/").slice(1);
-	term_path = comps.length ? comps[0] : "new";
-    }
-    this.term_path = term_path;
-
     var protocol = (window.location.protocol.indexOf("https") === 0) ? "wss" : "ws";
-    this.ws_url = protocol+":/"+"/"+window.location.host+"/_websocket/"+this.term_path
+    this.ws_url = protocol+"://"+window.location.host+ ws_url_path
     if (window.location.search)
 	this.ws_url += window.location.search;
     this.ws = new WebSocket(this.ws_url);
