@@ -502,15 +502,13 @@ class TermManager(object):
             term = self.terminals.get(term_name)
             if term:
                 # "Idle" terminal
-                term.output_time = 0
-            self.check_kill_idle = True
+                term.kill()
 
     def kill_all(self):
         with self.lock:
             for term in self.terminals.values():
                 # "Idle" terminal
-                term.output_time = 0
-            self.check_kill_idle = True
+                term.kill()
 
     def kill_idle(self):
         # Kill all "idle" terminals
@@ -521,16 +519,11 @@ class TermManager(object):
                 if term:
                     if (cur_time-term.output_time) > IDLE_TIMEOUT:
                         logging.warning("kill_idle: %s", term_name)
-                        try:
-                            os.close(term.fd)
-                            os.kill(term.pid, signal.SIGTERM)
-                        except (IOError, OSError):
-                            pass
+                        term.kill()
                         try:
                             del self.terminals[term_name]
                         except Exception:
                             pass
-                        self.client_callback(term_name, "", "disconnect", 1)
 
     def term_read(self, term_name):
         with self.lock:

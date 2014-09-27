@@ -389,7 +389,6 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                 if kill_term:
                     self.terminal.kill()
                     self.application.term_manager.discard(self.term_path)
-                    self.kill_remote(self.term_path, from_user)
 
         except Exception as excp:
             logging.error("TermSocket.on_message: ERROR %s", excp)
@@ -397,7 +396,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             return
 
     def on_pty_killed(self):
-        self.term_remote_call("document", BANNER_HTML+'<p>CLOSED TERMINAL<p><a href="/">Home</a>')
+        json_msg = json.dumps(['disconnect', 1])
+        self.write_message(json_msg)
         self.on_close()
         self.close()
 
