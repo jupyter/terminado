@@ -409,6 +409,12 @@ class NewTerminalHandler(tornado.web.RequestHandler):
         print(".. Redirecting", term_name)
         self.redirect("/" + term_name, permanent=False)
 
+class TerminalPageHandler(tornado.web.RequestHandler):
+    """Render the /ttyX pages"""
+    def get(self, terminal_name):
+        print("Rendering for", terminal_name)
+        return self.render("termpage.html")
+
 class Application(tornado.web.Application):
     def __init__(self, term_manager, term_settings, **kwargs):
         self.term_manager = term_manager
@@ -417,8 +423,11 @@ class Application(tornado.web.Application):
                 (r"/_websocket/(%s)" % TERM_NAME_RE_PART, TermSocket),
                 (STATIC_PREFIX+r"(.*)", tornado.web.StaticFileHandler, {"path": Doc_rootdir}),
                 (r"/new/?", NewTerminalHandler),
-                (r"/()tty\d+/?", tornado.web.StaticFileHandler, {"path": Doc_rootdir, "default_filename": "index.html"}),
+                (r"/(tty\d+)/?", TerminalPageHandler),
                 ]
+        
+        if 'template_path' not in kwargs:
+            kwargs['template_path'] = os.path.join(os.path.dirname(__file__), "templates")
         super(Application, self).__init__(handlers, **kwargs)
 
 def run_server(options, args):
