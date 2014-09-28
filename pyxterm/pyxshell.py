@@ -28,6 +28,7 @@ else:
     byte_code = lambda x: x
     unicode = str
 
+import codecs
 import errno
 import fcntl
 import itertools
@@ -177,6 +178,7 @@ class Terminal(WithEvents):
         self.cookie = cookie
         self.access_code = access_code
         self.term_encoding = encoding
+        self._decoder = codecs.getincrementaldecoder(encoding)(errors='replace')
         self.log = log
 
         self.current_dir = ""
@@ -246,7 +248,7 @@ class Terminal(WithEvents):
     def read_ready(self, fd, events):
         assert fd == self.fd
         data = os.read(self.fd, 65536)
-        text = data.decode(self.term_encoding)
+        text = self._decoder.decode(data, final=False)
         self.trigger('read', text)
 
     def kill(self):
