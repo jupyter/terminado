@@ -36,7 +36,14 @@ def main(argv):
     app.listen(8765)
     t = threading.Timer(0.5, webbrowser.open, ("http://localhost:8765",))
     t.start()
-    tornado.ioloop.IOLoop.instance().start()
+    loop = tornado.ioloop.IOLoop.instance()
+    try:
+        loop.start()
+    except KeyboardInterrupt:
+        print(" Shutting down on SIGINT")
+    finally:
+        term_manager.shutdown()
+        loop.close()
 
 if __name__ == '__main__':
     main([])
