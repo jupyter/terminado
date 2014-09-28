@@ -157,10 +157,9 @@ class WithEvents(object):
 class Terminal(WithEvents):
     event_names = ['read', 'died']
 
-    def __init__(self, term_name, fd, pid, manager, height=25, width=80, winheight=0, winwidth=0,
+    def __init__(self, fd, pid, manager, height=25, width=80, winheight=0, winwidth=0,
                  cookie=0, access_code="", log=False):
         super(Terminal, self).__init__()
-        self.term_name = term_name
         self.fd = fd
         self.pid = pid
         self.manager = manager
@@ -339,11 +338,11 @@ class TermManager(object):
             else:
                 logging.info("Forked pid=%d %s", pid, term_name)
                 fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd,fcntl.F_GETFL)|os.O_NONBLOCK)
-                term = Terminal(term_name, fd, pid, self,
-                                                     height=height, width=width,
-                                                     winheight=winheight, winwidth=winwidth,
-                                                     cookie=cookie, access_code=access_code,
-                                                     log=bool(self.log_file))
+                term = Terminal(fd, pid, self, height=height, width=width,
+                                winheight=winheight, winwidth=winwidth,
+                                cookie=cookie, access_code=access_code,
+                                log=bool(self.log_file))
+
                 self.terminals[term_name] = term
                 term.register_multi(callbacks)
                 term.register('died', lambda : self.ioloop.remove_handler(term.fd))

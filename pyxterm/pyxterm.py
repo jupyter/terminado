@@ -127,7 +127,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             logging.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
             return False
 
-    def open(self, term_name):
+    def open(self, term_name='tty1'):
         if not self.origin_check():
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
@@ -259,21 +259,22 @@ class NewTerminalHandler(tornado.web.RequestHandler):
 class TerminalPageHandler(tornado.web.RequestHandler):
     """Render the /ttyX pages"""
     def get(self, term_name):
-        return self.render("termpage.html", ws_url_path="/_websocket/"+term_name)
+        return self.render("termpage.html", static=self.static_url,
+                           ws_url_path="/_websocket/"+term_name)
 
 class Application(tornado.web.Application):
-    def __init__(self, term_manager, term_settings, **kwargs):
+    def __init__(self, term_manager, **kwargs):
         self.term_manager = term_manager
-        self.term_settings = term_settings
         handlers = [
                 (r"/_websocket/(%s)" % TERM_NAME_RE_PART, TermSocket),
-                (STATIC_PREFIX+r"(.*)", tornado.web.StaticFileHandler, {"path": Doc_rootdir}),
                 (r"/new/?", NewTerminalHandler),
                 (r"/(tty\d+)/?", TerminalPageHandler),
                 ]
         
         if 'template_path' not in kwargs:
             kwargs['template_path'] = os.path.join(os.path.dirname(__file__), "templates")
+        if 'static_path' not in kwargs:
+            kwargs['static_path'] = Doc_rootdir
         super(Application, self).__init__(handlers, **kwargs)
 
 def run_server(options, args):
@@ -316,8 +317,7 @@ def run_server(options, args):
     term_manager = pyxshell.TermManager(shell_command=shell_command, server_url="",
                                         term_settings=term_settings)
 
-    application = Application(term_manager=term_manager, term_settings=term_settings,
-                              **app_settings)
+    application = Application(term_manager=term_manager, **app_settings)
 
     ##logging.warning("DocRoot: "+Doc_rootdir);
 
