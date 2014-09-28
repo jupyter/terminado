@@ -461,21 +461,6 @@ class TermManager(object):
 
         return env
 
-    def get_terminal(self, term_name):
-        return self.terminals.get(term_name)
-
-    def remote_term_call(self, term_name, method, *args, **kwargs):
-        terminal = self.get_terminal(term_name)
-        if not terminal:
-            raise Exception("Invalid terminal name "+term_name)
-
-        bound_method = getattr(terminal, "rpc_"+method, None)
-        if not bound_method:
-            raise Exception("Invalid remote method "+method)
-        logging.info("Remote term call %s", method)
-        with self.lock:
-            return bound_method(*args, **kwargs)
-
     def term_names(self):
         with self.lock:
             return list(self.terminals.keys())
@@ -491,17 +476,9 @@ class TermManager(object):
             self.alive = 0
             self.kill_all()
 
-    def kill_term(self, term_name):
-        with self.lock:
-            term = self.terminals.get(term_name)
-            if term:
-                # "Idle" terminal
-                term.kill()
-
     def kill_all(self):
         with self.lock:
             for term in self.terminals.values():
-                # "Idle" terminal
                 term.kill()
 
     def kill_idle(self):
