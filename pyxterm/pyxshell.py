@@ -187,10 +187,10 @@ class Terminal(WithEvents):
         self.output_time = time.time()
     
     @classmethod
-    def spawn(cls, shell_command, working_dir="~", env=None, **kwargs):
+    def spawn(cls, shell_command, env, working_dir="~", **kwargs):
         pid, fd = pty.fork()
         if pid == 0:
-            _exec_new_terminal(shell_command, working_dir, env)
+            _exec_new_terminal(shell_command, env, working_dir)
             # This will never return, because the process will turn into
             # whatever shell_command specifies.
         else:
