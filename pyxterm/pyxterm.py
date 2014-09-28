@@ -100,7 +100,7 @@ COOKIE_TIMEOUT = 86400
 AUTH_DIGITS = 12    # Form authentication code hex-digits
                     # Note: Less than half of the 32 hex-digit state id should be used for form authentication
 
-AUTH_TYPES = ("none", "ssh", "login")
+AUTH_TYPES = ("none", "login")
 
 class TermSocket(tornado.websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
@@ -290,8 +290,8 @@ def run_server(options, args):
     new_url = server_url + "/new"
 
     if args:
-        if options.auth_type in ("login", "ssh"):
-            sys.exit("--auth_type=login/ssh cannot be combined with specified shell command")
+        if options.auth_type == "login":
+            sys.exit("--auth_type=login cannot be combined with specified shell command")
         shell_command = args[:]
     elif options.auth_type == "login":
         if os.geteuid():
@@ -299,10 +299,6 @@ def run_server(options, args):
         if not options.https and external_host != "localhost":
             sys.exit("Error: At this time --auth_type=login is permitted only with https or localhost (for security reasons)")
         shell_command = ["login"]
-    elif options.auth_type == "ssh":
-        if not pyxshell.match_program_name("sshd"):
-            sys.exit("Error: sshd must be running for --auth_type=ssh")
-        shell_command = ["ssh"]
     else:
         shell_command = ["bash"]
 

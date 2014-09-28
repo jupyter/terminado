@@ -34,12 +34,9 @@ import itertools
 import logging
 import os
 import pty
-import re
-import select
 import signal
 import struct
 import subprocess
-import traceback
 import threading
 import time
 import termios
@@ -54,10 +51,6 @@ except NotImplementedError:
 
 ENV_PREFIX = "PYXTERM_"         # Environment variable prefix
 NO_COPY_ENV = set([])         # Do not copy these environment variables
-
-EXEC_DIR = ""                 # If specified, this subdirectory will be prepended to the PATH
-File_dir = os.path.dirname(__file__)
-Exec_path = os.path.join(File_dir, EXEC_DIR) if EXEC_DIR else ""
 
 DEFAULT_TERM_TYPE = "xterm"
 
@@ -120,6 +113,21 @@ def setup_logging(log_level=logging.ERROR, filename="", file_level=None):
         fhandler.setFormatter(formatter)
         logger.addHandler(fhandler)
 
+def _exec_new_terminal(cmd, env, working_dir="~"):
+    """This is run in the child process after forking.
+    
+    It ends by calling :func:`os.execvpe` to launch the desired process.
+    """
+    try:
+        os.chdir(working_dir)
+    except Exception:
+        os.chdir(os.path.expanduser("~"))
+
+    # Close all open fd (except stdin, stdout, stderr)
+    os.closerange(3, subprocess.MAXFD)
+
+    # Exec shell
+    os.execvpe(cmd[0], cmd, env)
 
 class WithEvents(object):
     event_names = []
@@ -157,35 +165,36 @@ class WithEvents(object):
 class Terminal(WithEvents):
     event_names = ['read', 'died']
 
-    def __init__(self, fd, pid, manager, height=25, width=80, winheight=0, winwidth=0,
-                 cookie=0, access_code="", log=False):
+    def __init__(self, fd, pid, height=25, width=80, winheight=0, winwidth=0,
+                 cookie=0, access_code="", log=False, encoding='utf-8'):
         super(Terminal, self).__init__()
         self.fd = fd
         self.pid = pid
-        self.manager = manager
         self.width = width
         self.height = height
         self.winwidth = winwidth
         self.winheight = winheight
         self.cookie = cookie
         self.access_code = access_code
-        self.term_encoding = manager.term_settings.get("encoding", "utf-8")
+        self.term_encoding = encoding
         self.log = log
 
         self.current_dir = ""
         self.update_buf = ""
 
-        self.init()
-        self.reset()
         self.rpc_set_size(height, width, winheight, winwidth)
 
         self.output_time = time.time()
-
-    def init(self):
-        pass
-
-    def reset(self):
-        pass
+    
+    @classmethod
+    def spawn(cls, shell_command, working_dir="~", env=None, **kwargs):
+        pid, fd = pty.fork()
+        if pid == 0:
+            _exec_new_terminal(shell_command, working_dir, env)
+            # This will never return, because the process will turn into
+            # whatever shell_command specifies.
+        else:
+            return cls(fd, pid, **kwargs)
 
     def resize_buffer(self, height, width, winheight=0, winwidth=0, force=False):
         reset_flag = force or (self.width != width or self.height != height)
@@ -194,7 +203,6 @@ class Terminal(WithEvents):
         if reset_flag:
             self.width = width
             self.height = height
-            self.reset()
 
     def rpc_set_size(self, height, width, winheight=0, winwidth=0):
         # python bug http://python.org/sf/1112949 on amd64
@@ -209,9 +217,6 @@ class Terminal(WithEvents):
             raise Exception("Invalid remote method "+method)
         logging.info("Remote term call %s", method)
         return bound_method(*args, **kwargs)
-
-    def clear(self):
-        self.update_buf = ""
 
     def pty_write(self, data):
         assert isinstance(data, unicode), "Must write unicode data"
@@ -270,7 +275,6 @@ class TermManager(object):
                  log_file="", log_level=logging.ERROR):
         """ Manages multiple terminals (create, communicate, destroy)
         """
-        ##signal.signal(signal.SIGCHLD, signal.SIG_IGN)
         self.shell_command = shell_command
         self.ssh_host = ssh_host
         self.server_url = server_url
@@ -294,7 +298,7 @@ class TermManager(object):
         self.check_kill_idle = False
         self.name_count = 0
 
-    def terminal(self, term_name=None, height=25, width=80, winheight=0, winwidth=0, parent="",
+    def terminal(self, term_name=None, height=25, width=80, winheight=0, winwidth=0,
                  access_code="", shell_command=[], callbacks=[], ssh_host=""):
         """Return (tty_name, cookie, alert_msg) for existing or newly created pty"""
         shell_command = shell_command or self.shell_command
@@ -310,9 +314,8 @@ class TermManager(object):
                     term.register_multi(callbacks)
                     return (term, term_name, term.cookie)
 
-            else:
-                # New default terminal name
-                term_name = self._next_available_name()
+            # New default terminal name
+            term_name = self._next_available_name()
 
             # Create new terminal
             max_terminals = self.term_settings.get("max_terminals",0)
@@ -321,33 +324,21 @@ class TermManager(object):
             cookie = make_term_cookie()
             logging.info("New terminal %s: %s", term_name, shell_command)
 
-            term_dir = ""
-            if parent:
-                parent_term = self.terminals.get(parent)
-                if parent_term:
-                    term_dir = parent_term.current_dir or ""
+            env = self.make_term_env(cookie, height, width, winheight, winwidth)
 
-            pid, fd = pty.fork()
-            if pid == 0:
-                ##logging.info("Forked pid=0 %s: %s", term_name, shell_command)
-                env = dict(self.term_env(term_name, cookie, height, width, winheight, winwidth))
-                env["COLUMNS"] = str(width)
-                env["LINES"] = str(height)
-                self._exec_new_terminal(shell_command, working_dir=term_dir,
-                                        add_to_env=env, ssh_host=ssh_host)
-            else:
-                logging.info("Forked pid=%d %s", pid, term_name)
-                fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd,fcntl.F_GETFL)|os.O_NONBLOCK)
-                term = Terminal(fd, pid, self, height=height, width=width,
-                                winheight=winheight, winwidth=winwidth,
-                                cookie=cookie, access_code=access_code,
-                                log=bool(self.log_file))
+            term = Terminal.spawn(shell_command, env=env,
+                                  height=height, width=width,
+                                  winheight=winheight, winwidth=winwidth,
+                                  cookie=cookie, access_code=access_code,
+                                  log=bool(self.log_file),
+                                  encoding=self.term_settings.get('encoding', 'utf-8'),
+                                 )
 
-                self.terminals[term_name] = term
-                term.register_multi(callbacks)
-                term.register('died', lambda : self.ioloop.remove_handler(term.fd))
-                self.ioloop.add_handler(term.fd, term.read_ready, self.ioloop.READ)
-                return term, term_name, cookie
+            self.terminals[term_name] = term
+            term.register_multi(callbacks)
+            term.register('died', lambda : self.ioloop.remove_handler(term.fd))
+            self.ioloop.add_handler(term.fd, term.read_ready, self.ioloop.READ)
+            return term, term_name, cookie
 
     def _next_available_name(self):
         for n in itertools.count(start=1):
@@ -355,185 +346,28 @@ class TermManager(object):
             if name not in self.terminals:
                 return name
 
-    def _exec_new_terminal(self, shell_command, working_dir="~",
-                           add_to_env=None, ssh_host=None):
-        """This is run in the child process after forking.
-        
-        It ends by calling :func:`os.execvpe` to launch the desired process.
-        """
-        if len(shell_command) == 1 and not os.path.isabs(shell_command[0]):
-            # Relative path shell command with no arguments
-            if shell_command[0] in ("bash", "csh", "ksh", "sh", "tcsh", "zsh"):
-                # Standard shell
-                cmd = shell_command[:]
-
-            elif shell_command[0] == "login":
-                # Login access
-                time.sleep(0.3)      # Needed for PTY output to appear
-                if os.getuid() != 0:
-                    logging.error("Must be root to run login")
-                    os._exit(1)
-                if os.path.exists("/bin/login"):
-                    cmd = ['/bin/login']
-                elif os.path.exists("/usr/bin/login"):
-                    cmd = ['/usr/bin/login']
-                else:
-                    logging.error("/bin/login or /usr/bin/login not found")
-                    os._exit(1)
-
-            elif shell_command[0] == "ssh":
-                # SSH access
-                time.sleep(0.3)      # Needed for PTY output to appear
-                sys.stderr.write("SSH Authentication\n")
-                hostname = ssh_host or "localhost"
-                if hostname != "localhost":
-                    sys.stdout.write("Hostname: %s\n" % hostname)
-                sys.stdout.write("Username: ")
-                username = sys.stdin.readline().strip()
-                if re.match('^[0-9A-Za-z-_. ]+$', username):
-                    cmd = ['ssh']
-                    cmd += ['-oPreferredAuthentications=keyboard-interactive,password']
-                    cmd += ['-oNoHostAuthenticationForLocalhost=yes']
-                    cmd += ['-oLogLevel=FATAL']
-                    cmd += ['-F/dev/null', '-l', username, ssh_host]
-                else:
-                    logging.error("Invalid username %s", username)
-                    os._exit(1)
-
-            else:
-                # Non-standard program; run via shell
-                cmd = ['/bin/sh', '-c', shell_command[0]]
-
-        elif shell_command and os.path.isabs(shell_command[0]):
-            # Absolute path shell command
-            cmd = shell_command[:]
-
-        else:
-            logging.error("Invalid shell command: %s", shell_command)
-            os._exit(1)
-
-        env = {}
-        for var in os.environ.keys():
-            if var not in NO_COPY_ENV:
-                val = os.getenv(var)
-                env[var] = val
-                if var == "PATH" and Exec_path and Exec_path not in env[var]:
-                    # Prepend app bin directory to path
-                    env[var] = Exec_path + ":" + env[var]
-        if add_to_env is not None:
-            env.update(add_to_env)
-
-        try:
-            os.chdir(working_dir)
-        except Exception:
-            os.chdir(os.path.expanduser("~"))
-
-        ##logging.info("Exec %s: %s", cmd, env)
-
-        # Close all open fd (except stdin, stdout, stderr)
-        try:
-            fdl = [int(i) for i in os.listdir('/proc/self/fd')]
-        except OSError:
-            fdl = range(256)
-        for i in [i for i in fdl if i>2]:
-            try:
-                os.close(i)
-            except OSError:
-                pass
-
-        # Exec shell
-        os.execvpe(cmd[0], cmd, env)
-
-    def term_env(self, term_name, cookie, height, width, winheight, winwidth, export=False):
-        env = []
-        env.append( ("TERM", self.term_settings.get("type",DEFAULT_TERM_TYPE)) )
-        env.append( (ENV_PREFIX+"COOKIE", str(cookie)) )
+    def make_term_env(self, cookie, height, width, winheight, winwidth):
+        env = os.environ.copy()
+        env["TERM"] = self.term_settings.get("type",DEFAULT_TERM_TYPE)
+        env[ENV_PREFIX+"COOKIE"] = str(cookie)
         dimensions = "%dx%d" % (width, height)
         if winwidth and winheight:
             dimensions += ";%dx%d" % (winwidth, winheight)
-        env.append( (ENV_PREFIX+"DIMENSIONS", dimensions) )
+        env[ENV_PREFIX+"DIMENSIONS"] = dimensions
+        env["COLUMNS"] = str(width)
+        env["LINES"] = str(height)
 
         if self.server_url:
-            env.append( (ENV_PREFIX+"URL", self.server_url) )
-
-        env.append( (ENV_PREFIX+"DIR", File_dir) )
+            env[ENV_PREFIX+"URL"] = self.server_url
 
         return env
 
-    def term_names(self):
-        with self.lock:
-            return list(self.terminals.keys())
-
-    def running(self):
-        with self.lock:
-            return self.alive
-
     def shutdown(self):
-        with self.lock:
-            if not self.alive:
-                return
-            self.alive = 0
-            self.kill_all()
+        self.kill_all()
 
     def kill_all(self):
-        with self.lock:
-            for term in self.terminals.values():
-                term.kill()
-
-    def kill_idle(self):
-        # Kill all "idle" terminals
-        with self.lock:
-            cur_time = time.time()
-            for term_name in self.term_names():
-                term = self.terminals.get(term_name)
-                if term:
-                    if (cur_time-term.output_time) > IDLE_TIMEOUT:
-                        logging.warning("kill_idle: %s", term_name)
-                        term.kill()
-                        try:
-                            del self.terminals[term_name]
-                        except Exception:
-                            pass
-
-    def loop(self):
-        """ Multi-terminal I/O loop"""
-        while self.running():
-            try:
-                fd_dict = dict((term.fd, name) for name, term in self.terminals.items())
-                if not fd_dict:
-                    time.sleep(0.02)
-                    continue
-                inputs, outputs, errors = select.select(fd_dict.keys(), [], [], 0.02)
-                for fd in inputs:
-                    try:
-                        self.term_read(fd_dict[fd])
-                    except Exception as excp:
-                        traceback.print_exc()
-                        term_name = fd_dict[fd]
-                        logging.warning("TermManager.loop: INTERNAL READ ERROR (%s) %s", term_name, excp)
-                        self.kill_term(term_name)
-                cur_time = time.time()
-                for term_name in fd_dict.values():
-                    term = self.terminals.get(term_name)
-                    if term:
-                        if term.needs_updating(cur_time):
-                            try:
-                                self.term_update(term_name)
-                            except Exception as excp:
-                                traceback.print_exc()
-                                logging.warning("TermManager.loop: INTERNAL UPDATE ERROR (%s) %s", term_name, excp)
-                                self.kill_term(term_name)
-                if self.check_kill_idle:
-                    self.check_kill_idle = False
-                    self.kill_idle()
-
-                if len(inputs):
-                    time.sleep(0.002)
-            except Exception as excp:
-                traceback.print_exc()
-                logging.warning("TermManager.loop: ERROR %s", excp)
-                break
-        self.kill_all()
+        for term in self.terminals.values():
+            term.kill()
 
 if __name__ == "__main__":
     ## Code to test Terminal on regular terminal
