@@ -121,9 +121,45 @@ def setup_logging(log_level=logging.ERROR, filename="", file_level=None):
         logger.addHandler(fhandler)
 
 
-class Terminal(object):
+class WithEvents(object):
+    event_names = []
+    def __init__(self):
+        self._event_callbacks = {name:set() for name in self.event_names}
+
+    def register(self, event, callback):
+        self._event_callbacks[event].add(callback)
+
+    def register_multi(self, events_callbacks):
+        for event, callback in events_callbacks:
+            self.register(event, callback)
+
+    def unregister(self, event, callback):
+        self._event_callbacks[event].discard(callback)
+
+    def unregister_multi(self, events_callbacks):
+        for event, callback in events_callbacks:
+            self.unregister(event, callback)
+
+    def unregister_all(self, event):
+        self._event_callbacks[event].clear()
+
+    def trigger(self, event, *args):
+        err = None
+        for callback in self._event_callbacks[event]:
+            try:
+                callback(*args)
+            except Exception as e:
+                err = e
+
+        if err is not None:
+            raise err
+
+class Terminal(WithEvents):
+    event_names = ['read', 'died']
+
     def __init__(self, term_name, fd, pid, manager, height=25, width=80, winheight=0, winwidth=0,
                  cookie=0, access_code="", log=False):
+        super(Terminal, self).__init__()
         self.term_name = term_name
         self.fd = fd
         self.pid = pid
@@ -145,8 +181,6 @@ class Terminal(object):
         self.rpc_set_size(height, width, winheight, winwidth)
 
         self.output_time = time.time()
-        self.read_callbacks = []
-        self.kill_callbacks = []
 
     def init(self):
         pass
@@ -209,8 +243,7 @@ class Terminal(object):
         assert fd == self.fd
         data = os.read(self.fd, 65536)
         text = data.decode(self.term_encoding)
-        for f in self.read_callbacks:
-            f(text)
+        self.trigger('read', text)
 
     def kill(self):
         try:
@@ -219,8 +252,7 @@ class Terminal(object):
         except (IOError, OSError):
             pass
 
-        for f in self.kill_callbacks:
-            f()
+        self.trigger('died')
 
 class InvalidAccessCode(Exception):
     def __str__(self):
@@ -235,7 +267,8 @@ def MaxTerminalsReached(Exception):
 
 class TermManager(object):
     def __init__(self, shell_command=[], ssh_host="", server_url="",
-                 run_io_thread=False, term_settings={}, log_file="", log_level=logging.ERROR):
+                 ioloop=None, term_settings={},
+                 log_file="", log_level=logging.ERROR):
         """ Manages multiple terminals (create, communicate, destroy)
         """
         ##signal.signal(signal.SIGCHLD, signal.SIG_IGN)
@@ -243,6 +276,11 @@ class TermManager(object):
         self.ssh_host = ssh_host
         self.server_url = server_url
         self.term_settings = term_settings
+        if ioloop is not None:
+            self.ioloop = ioloop
+        else:
+            import tornado.ioloop
+            self.ioloop = tornado.ioloop.IOLoop.instance()
         self.log_file = log_file
 
         self.term_options = term_settings.get("options", {})
@@ -256,12 +294,9 @@ class TermManager(object):
         self.alive = 1
         self.check_kill_idle = False
         self.name_count = 0
-        if run_io_thread:
-            self.thread = threading.Thread(target=self.loop)
-            self.thread.start()
 
     def terminal(self, term_name=None, height=25, width=80, winheight=0, winwidth=0, parent="",
-                 access_code="", shell_command=[], ssh_host=""):
+                 access_code="", shell_command=[], callbacks=[], ssh_host=""):
         """Return (tty_name, cookie, alert_msg) for existing or newly created pty"""
         shell_command = shell_command or self.shell_command
         ssh_host = ssh_host or self.ssh_host
@@ -273,11 +308,12 @@ class TermManager(object):
                     if term.access_code and term.access_code != access_code:
                         raise InvalidAccessCode
                     term.rpc_set_size(height, width, winheight, winwidth)
+                    term.register_multi(callbacks)
                     return (term, term_name, term.cookie)
 
             else:
                 # New default terminal name
-                term_name = self.next_available_name()
+                term_name = self._next_available_name()
 
             # Create new terminal
             max_terminals = self.term_settings.get("max_terminals",0)
@@ -309,9 +345,12 @@ class TermManager(object):
                                                      cookie=cookie, access_code=access_code,
                                                      log=bool(self.log_file))
                 self.terminals[term_name] = term
+                term.register_multi(callbacks)
+                term.register('died', lambda : self.ioloop.remove_handler(term.fd))
+                self.ioloop.add_handler(term.fd, term.read_ready, self.ioloop.READ)
                 return term, term_name, cookie
 
-    def next_available_name(self):
+    def _next_available_name(self):
         for n in itertools.count(start=1):
             name = "tty%d" % n
             if name not in self.terminals:
@@ -519,8 +558,6 @@ class TermManager(object):
                 logging.warning("TermManager.loop: ERROR %s", excp)
                 break
         self.kill_all()
-
-
 
 if __name__ == "__main__":
     ## Code to test Terminal on regular terminal

@@ -134,11 +134,16 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         logging.info("TermSocket.open:")
         access_code = ""
 
+        self.pty_callbacks = [
+            ('read', self.on_pty_read),
+            ('died', self.on_pty_died),
+        ]
         self.term_name = term_name
         try:
             self.terminal, _,  self.term_cookie = \
                 self.application.term_manager.terminal(term_name=term_name,
-                                                       access_code=access_code)
+                                                       access_code=access_code,
+                                                       callbacks=self.pty_callbacks)
 
         except Exception as e:
             message = str(e)
@@ -147,24 +152,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.close()
             raise
 
-        # Hook up callbacks for pty events
-        self.terminal.read_callbacks.append(self.on_pty_read)
-        self.terminal.kill_callbacks.append(self.on_pty_killed)
-        loop = tornado.ioloop.IOLoop.instance()
-        try:
-            loop.add_handler(self.terminal.fd, self.terminal.read_ready, loop.READ)
-        except OSError as e:
-            import errno
-            # We seem to get FileExistsError if the handler was already registered
-            if e.errno != errno.EEXIST:
-                raise
-
         self.term_remote_call("setup", {})
         logging.info("TermSocket.open: Opened %s", self.term_name)
 
     def on_pty_read(self, text):
-        json_msg = json.dumps(['stdout', text])
-        self.write_message(json_msg)
+        self.send_json_message(['stdout', text])
 
     def term_remote_call(self, method, *args, **kwargs):
         """
@@ -188,6 +180,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                 self.term_write(content_prefix+content, binary=True)
         except Exception as excp:
             logging.error("term_remote_call: ERROR %s", excp)
+
+    def send_json_message(self, content):
+        json_msg = json.dumps(content)
+        self.write_message(json_msg)
 
     def term_write(self, data, binary=False):
         try:
@@ -247,9 +243,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.term_remote_call("errmsg", str(excp))
             return
 
-    def on_pty_killed(self):
-        json_msg = json.dumps(['disconnect', 1])
-        self.write_message(json_msg)
+    def on_close(self):
+        self.terminal.unregister_multi(self.pty_callbacks)
+
+    def on_pty_died(self):
+        self.send_json_message(['disconnect', 1])
         self.close()
 
 class NewTerminalHandler(tornado.web.RequestHandler):
