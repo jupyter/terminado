@@ -25,12 +25,11 @@ var EventEmitter = Terminal.EventEmitter
   , off = Terminal.off
   , cancel = Terminal.cancel;
 
-function Pyxterm(socket, remoteParams, options) {
+function Pyxterm(socket, options) {
     // Wrapper class for Terminal to interface with WebSock
     var self = this;
 
     this.socket = socket;
-    this.remoteParams = remoteParams;
 
     Terminal.call(this, options)
 
@@ -42,7 +41,6 @@ function Pyxterm(socket, remoteParams, options) {
         document.title = title;
     });
 
-    this.emit('title', remoteParams.term_path);
     this.open(document.body);
 
     self.socket.on('stdout', function(data) {

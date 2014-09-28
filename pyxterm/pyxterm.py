@@ -108,19 +108,12 @@ AUTH_DIGITS = 12    # Form authentication code hex-digits
 
 AUTH_TYPES = ("none", "ssh", "login")
 
-def get_query_auth(state_id):
-    return state_id[:AUTH_DIGITS]
-
-def get_first_arg(query_data, argname, default=""):
-    return query_data.get(argname, [default])[0]
-
-
 class TermSocket(tornado.websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         super(TermSocket, self).__init__(application, request, **kwargs)
         logging.info("TermSocket.__init__: %s", request.uri)
 
-        self.term_path = ""
+        self.term_name = ""
         self.term_cookie = ""
 
     def origin_check(self):
@@ -146,9 +139,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         logging.info("TermSocket.open:")
         access_code = ""
-    
+
+        self.term_name = term_name
         try:
-            self.terminal, self.term_path, self.term_cookie = \
+            self.terminal, _,  self.term_cookie = \
                 self.application.term_manager.terminal(term_name=term_name,
                                                        access_code=access_code)
 
@@ -171,8 +165,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             if e.errno != errno.EEXIST:
                 raise
 
-        self.term_remote_call("setup", {"term_path": self.term_path})
-        logging.info("TermSocket.open: Opened %s", self.term_path)
+        self.term_remote_call("setup", {})
+        logging.info("TermSocket.open: Opened %s", self.term_name)
 
     def on_pty_read(self, text):
         json_msg = json.dumps(['stdout', text])
@@ -215,12 +209,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                 self.close()
             except Exception:
                 pass
-
-    def on_message(self, message):
-        ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_path, type(message), len(message) if isinstance(message, bytes) else message[:250])
-        if not self.term_path:
-            return
-
+    
+    def _parse_message(self, message):
         if isinstance(message, bytes):
             # Binary message with UTF-16 JSON prefix
             enc_delim = "\n\n".encode("utf-16")
@@ -232,6 +222,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         else:
             command = json.loads(message if isinstance(message,str) else message.encode("UTF-8", "replace"))
             content = None
+        
+        return command, content
+
+    def on_message(self, message):
+        ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
+        command, _ = self._parse_message(message)
             
         kill_term = False
         try:
@@ -239,7 +235,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             if command[0] == "kill_term":
                 kill_term = True
             elif command[0] == "errmsg":
-                logging.error("Terminal %s: %s", self.term_path, command[1])
+                logging.error("Terminal %s: %s", self.term_name, command[1])
                 send_cmd = False
 
             if send_cmd:
@@ -250,7 +246,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                     self.terminal.remote_call(*command)
                 if kill_term:
                     self.terminal.kill()
-                    self.application.term_manager.discard(self.term_path)
+                    self.application.term_manager.discard(self.term_name)
 
         except Exception as excp:
             logging.error("TermSocket.on_message: ERROR %s", excp)
@@ -265,8 +261,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 class NewTerminalHandler(tornado.web.RequestHandler):
     """Redirect to an unused terminal name"""
     def get(self):
-        # XXX: Race condition if two users hit /new ~ simultaneously
-        term_name = self.application.term_manager.next_available_name()
+        terminal, term_name, cookie = self.application.term_manager.terminal()
         self.redirect("/" + term_name, permanent=False)
 
 class TerminalPageHandler(tornado.web.RequestHandler):
