@@ -62,7 +62,6 @@ import signal
 import sys
 import threading
 import time
-import uuid
 import webbrowser
 
 try:
@@ -79,11 +78,6 @@ import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.websocket
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
 
 File_dir = os.path.dirname(__file__)
 if File_dir == ".":
