@@ -1,8 +1,8 @@
-function make_terminal(element, options, ws_url) {
+function make_terminal(element, size, ws_url) {
     var ws = new WebSocket(ws_url);
     var term = new Terminal({
-      cols: options.cols,
-      rows: options.rows,
+      cols: size.cols,
+      rows: size.rows,
       screenKeys: true,
       useStyle: true
     });
@@ -17,7 +17,7 @@ function make_terminal(element, options, ws_url) {
             document.title = title;
         });
         
-        term.open(document.body);
+        term.open(element);
         
         ws.onmessage = function(event) {
             json_msg = JSON.parse(event.data);

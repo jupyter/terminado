@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<head>
+<meta charset="UTF-8"> 
+<title>Terminado UIModule demo</title>
+<!--
+  pyxterm: Basic Python socket implementation for term.js
+
+  Example template
+  Modified by: R. Saravanan <sarava@sarava.net> 2014
+  Original Copyright (c) 2012-2013, Christopher Jeffrey (MIT License)
+-->
+</head>
+<style>
+#wrapper {
+    border: 5px dotted magenta;
+    padding: 10px;
+    display: inline-block;  # Need this, not sure why
+}
+
+.terminado-container {
+    display: inline-block;  # ditto
+}
+</style>
+<body>
+<h1>Terminado UIModule terminal</h1>
+<div id="wrapper" style="border: 5px dotted magenta;">
+    {% module Terminal("/websocket") %}
+</div>
+</body>
