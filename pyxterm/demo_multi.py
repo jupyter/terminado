@@ -8,6 +8,7 @@ import time
 import webbrowser
 
 import tornado.web
+# This demo requires tornado_xstatic and XStatic-term.js
 import tornado_xstatic
 
 from sslcerts import prepare_ssl_options
@@ -23,32 +24,14 @@ class TerminalPageHandler(tornado.web.RequestHandler):
     """Render the /ttyX pages"""
     def get(self, term_name):
         return self.render("termpage.html", static=self.static_url,
-                           xstatic=self.application.xstatic_url,
+                           xstatic=self.application.settings['xstatic_url'],
                            ws_url_path="/_websocket/"+term_name)
 
 class NewTerminalHandler(tornado.web.RequestHandler):
     """Redirect to an unused terminal name"""
     def get(self):
-        terminal, term_name, cookie = self.application.term_manager.terminal()
-        self.redirect("/" + term_name, permanent=False)
-
-class Application(tornado.web.Application):
-    def __init__(self, term_manager, **kwargs):
-        self.term_manager = term_manager
-        handlers = [
-                (r"/_websocket/(%s)" % pyxterm.TERM_NAME_RE_PART, pyxterm.TermSocket),
-                (r"/new/?", NewTerminalHandler),
-                (r"/(tty\d+)/?", TerminalPageHandler),
-                (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler)
-                ]
-
-        self.xstatic_url = tornado_xstatic.url_maker('/xstatic/')
-        
-        if 'template_path' not in kwargs:
-            kwargs['template_path'] = TEMPLATE_DIR
-        if 'static_path' not in kwargs:
-            kwargs['static_path'] = STATIC_DIR
-        super(Application, self).__init__(handlers, **kwargs)
+        name, terminal = self.application.settings['term_manager'].new_named_terminal()
+        self.redirect("/" + name, permanent=False)
 
 
 def run_server(options, args):
@@ -76,18 +59,20 @@ def run_server(options, args):
     else:
         shell_command = ["bash"]
 
-    tem_str = options.term_options.strip().replace(" ","")
-    term_options = set(tem_str.split(",") if tem_str else [])
-    term_settings = {"type": options.term_type, "max_terminals": options.max_terminals,
-                     "https": options.https, "logging": options.logging,
-                     "options": term_options, "server_url": server_url, "auth_type": options.auth_type}
+    term_manager = pyxshell.NamedTermManager(shell_command=shell_command,
+                                             max_terminals=options.max_terminals)
 
-    app_settings = {"log_function": lambda x:None}
-
-    term_manager = pyxshell.TermManager(shell_command=shell_command, server_url="",
-                                        term_settings=term_settings)
-
-    application = Application(term_manager=term_manager, **app_settings)
+    handlers = [
+                (r"/_websocket/(%s)" % pyxterm.TERM_NAME_RE_PART,
+                     pyxterm.TermSocket, {'term_manager': term_manager}),
+                (r"/new/?", NewTerminalHandler),
+                (r"/(tty\d+)/?", TerminalPageHandler),
+                (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler)
+               ]
+    application = tornado.web.Application(handlers, static_path=STATIC_DIR,
+                              template_path=TEMPLATE_DIR,
+                              xstatic_url=tornado_xstatic.url_maker('/xstatic/'),
+                              term_manager=term_manager)
 
     ##logging.warning("DocRoot: "+Doc_rootdir);
 

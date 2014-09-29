@@ -38,7 +38,6 @@ import pty
 import signal
 import struct
 import subprocess
-import threading
 import time
 import termios
 import tty
@@ -167,7 +166,7 @@ class Terminal(WithEvents):
     event_names = ['read', 'died']
 
     def __init__(self, fd, pid, height=25, width=80, winheight=0, winwidth=0,
-                 cookie=0, access_code="", log=False, encoding='utf-8'):
+                 cookie=0, access_code="", encoding='utf-8'):
         super(Terminal, self).__init__()
         self.fd = fd
         self.pid = pid
@@ -179,7 +178,6 @@ class Terminal(WithEvents):
         self.access_code = access_code
         self.term_encoding = encoding
         self._decoder = codecs.getincrementaldecoder(encoding)(errors='replace')
-        self.log = log
 
         self.current_dir = ""
         self.update_buf = ""
@@ -260,98 +258,22 @@ class Terminal(WithEvents):
 
         self.trigger('died')
 
-class InvalidAccessCode(Exception):
-    def __str__(self):
-        return "Invalid terminal access code"
-
-def MaxTerminalsReached(Exception):
-    def __init__(self, max_terminals):
-        self.max_terminals = max_terminals
-    
-    def __str__(self):
-        return "Cannot create more than %d terminals" % self.max_terminals
-
-class TermManager(object):
-    def __init__(self, shell_command=[], ssh_host="", server_url="",
-                 ioloop=None, term_settings={},
-                 log_file="", log_level=logging.ERROR):
-        """ Manages multiple terminals (create, communicate, destroy)
-        """
+class TermManagerBase(object):
+    def __init__(self, shell_command, server_url="", term_settings={},
+                 ioloop=None):
         self.shell_command = shell_command
-        self.ssh_host = ssh_host
         self.server_url = server_url
         self.term_settings = term_settings
+
         if ioloop is not None:
             self.ioloop = ioloop
         else:
             import tornado.ioloop
             self.ioloop = tornado.ioloop.IOLoop.instance()
-        self.log_file = log_file
-
-        self.term_options = term_settings.get("options", {})
-
-        if log_file:
-            setup_logging(logging.WARNING, log_file, logging.INFO)
-            print("Logging to file", log_file, file=sys.stderr)
-    
-        self.terminals = {}
-        self.lock = threading.RLock()
-        self.alive = 1
-        self.check_kill_idle = False
-        self.name_count = 0
-
-    def terminal(self, term_name=None, height=25, width=80, winheight=0, winwidth=0,
-                 access_code="", shell_command=[], callbacks=[], ssh_host=""):
-        """Return (tty_name, cookie, alert_msg) for existing or newly created pty"""
-        shell_command = shell_command or self.shell_command
-        ssh_host = ssh_host or self.ssh_host
-        with self.lock:
-            if term_name:
-                term = self.terminals.get(term_name)
-                if term:
-                    # Existing terminal; resize and return it
-                    if term.access_code and term.access_code != access_code:
-                        raise InvalidAccessCode
-                    term.rpc_set_size(height, width, winheight, winwidth)
-                    term.register_multi(callbacks)
-                    return (term, term_name, term.cookie)
-
-            # New default terminal name
-            term_name = self._next_available_name()
-
-            # Create new terminal
-            max_terminals = self.term_settings.get("max_terminals",0)
-            if max_terminals and len(self.terminals) >= max_terminals:
-                raise MaxTerminalsReached(max_terminals)
-            cookie = make_term_cookie()
-            logging.info("New terminal %s: %s", term_name, shell_command)
-
-            env = self.make_term_env(cookie, height, width, winheight, winwidth)
-
-            term = Terminal.spawn(shell_command, env=env,
-                                  height=height, width=width,
-                                  winheight=winheight, winwidth=winwidth,
-                                  cookie=cookie, access_code=access_code,
-                                  log=bool(self.log_file),
-                                  encoding=self.term_settings.get('encoding', 'utf-8'),
-                                 )
-
-            self.terminals[term_name] = term
-            term.register_multi(callbacks)
-            term.register('died', lambda : self.ioloop.remove_handler(term.fd))
-            self.ioloop.add_handler(term.fd, term.read_ready, self.ioloop.READ)
-            return term, term_name, cookie
-
-    def _next_available_name(self):
-        for n in itertools.count(start=1):
-            name = "tty%d" % n
-            if name not in self.terminals:
-                return name
-
-    def make_term_env(self, cookie, height, width, winheight, winwidth):
+        
+    def make_term_env(self, height=25, width=80, winheight=0, winwidth=0, **kwargs):
         env = os.environ.copy()
         env["TERM"] = self.term_settings.get("type",DEFAULT_TERM_TYPE)
-        env[ENV_PREFIX+"COOKIE"] = str(cookie)
         dimensions = "%dx%d" % (width, height)
         if winwidth and winheight:
             dimensions += ";%dx%d" % (winwidth, winheight)
@@ -364,8 +286,103 @@ class TermManager(object):
 
         return env
 
+    def new_terminal(self, **kwargs):
+        options = self.term_settings.copy()
+        options['shell_command'] = self.shell_command
+        options.update(kwargs)
+        options['env'] = self.make_term_env(**options)
+        return Terminal.spawn(**options)
+
+    def start_reading(self, term):
+        term.register('died', lambda : self.ioloop.remove_handler(term.fd))
+        self.ioloop.add_handler(term.fd, term.read_ready, self.ioloop.READ)
+
+    def get_terminal(self, url_component=None):
+        raise NotImplementedError
+
     def shutdown(self):
         self.kill_all()
+
+    def kill_all(self):
+        raise NotImplementedError
+
+
+class SingleTermManager(TermManagerBase):
+    def __init__(self, **kwargs):
+        super(SingleTermManager, self).__init__(**kwargs)
+        self.terminal = None
+
+    def get_terminal(self, url_component=None):
+        if self.terminal is None:
+            self.terminal = self.new_terminal()
+            self.start_reading(self.terminal)
+        return self.terminal
+
+    def kill_all(self):
+        if self.terminal is not None:
+            self.terminal.kill()
+
+def MaxTerminalsReached(Exception):
+    def __init__(self, max_terminals):
+        self.max_terminals = max_terminals
+    
+    def __str__(self):
+        return "Cannot create more than %d terminals" % self.max_terminals
+
+class UniqueTermManager(TermManagerBase):
+    """Give each websocket a unique terminal to use."""
+    def __init__(self, max_terminals=None, **kwargs):
+        super(UniqueTermManager, self).__init__(**kwargs)
+        self.max_terminals = max_terminals
+        self.terminals = []
+
+    def get_terminal(self, url_component=None):
+        term = self.new_terminal()
+        self.start_reading(term)
+        self.terminals.append(term)
+        return term
+
+    def kill_all(self):
+        for term in self.terminals:
+            term.kill()
+    
+
+class NamedTermManager(TermManagerBase):
+    """Share terminals between websockets connected to the same endpoint.
+    """
+    def __init__(self, max_terminals=None, **kwargs):
+        super(NamedTermManager, self).__init__(**kwargs)
+        self.max_terminals = max_terminals
+        self.terminals = {}
+
+    def get_terminal(self, term_name):
+        assert term_name is not None
+        
+        if term_name in self.terminals:
+            return self.terminals[term_name]
+        
+        if self.max_terminals and len(self.terminals) >= self.max_terminals:
+            raise MaxTerminalsReached(self.max_terminals)
+
+        # Create new terminal
+        logging.info("New terminal %s: %s", term_name)
+        term = self.new_terminal()
+        self.terminals[term_name] = term
+        self.start_reading(term)
+        return term
+
+    def _next_available_name(self):
+        for n in itertools.count(start=1):
+            name = "tty%d" % n
+            if name not in self.terminals:
+                return name
+
+    def new_named_terminal(self):
+        name = self._next_available_name()
+        term = self.new_terminal()
+        self.terminals[name] = term
+        self.start_reading(term)
+        return name, term
 
     def kill_all(self):
         for term in self.terminals.values():

@@ -78,10 +78,8 @@ AUTH_DIGITS = 12    # Form authentication code hex-digits
                     # Note: Less than half of the 32 hex-digit state id should be used for form authentication
 
 class TermSocket(tornado.websocket.WebSocketHandler):
-    def __init__(self, application, request, **kwargs):
-        super(TermSocket, self).__init__(application, request, **kwargs)
-        logging.info("TermSocket.__init__: %s", request.uri)
-
+    def initialize(self, term_manager):
+        self.term_manager = term_manager
         self.term_name = ""
         self.term_cookie = ""
 
@@ -102,30 +100,19 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             logging.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
             return False
 
-    def open(self, term_name='tty1'):
+    def open(self, url_component=None):
         if not self.origin_check():
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
         logging.info("TermSocket.open:")
-        access_code = ""
 
         self.pty_callbacks = [
             ('read', self.on_pty_read),
             ('died', self.on_pty_died),
         ]
-        self.term_name = term_name
-        try:
-            self.terminal, _,  self.term_cookie = \
-                self.application.term_manager.terminal(term_name=term_name,
-                                                       access_code=access_code,
-                                                       callbacks=self.pty_callbacks)
-
-        except Exception as e:
-            message = str(e)
-            logging.error(message)
-            self.term_remote_call("alert", message)
-            self.close()
-            raise
+        self.term_name = url_component or 'tty'
+        self.terminal = self.term_manager.get_terminal(url_component)
+        self.terminal.register_multi(self.pty_callbacks)
 
         self.term_remote_call("setup", {})
         logging.info("TermSocket.open: Opened %s", self.term_name)
