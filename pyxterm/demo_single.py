@@ -4,6 +4,7 @@ import webbrowser
 
 import tornado.ioloop
 import tornado.web
+import tornado_xstatic
 
 import pyxterm
 import pyxshell
@@ -14,6 +15,7 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 class TerminalPageHandler(tornado.web.RequestHandler):
     def get(self):
         return self.render("termpage.html", static=self.static_url,
+                           xstatic=self.application.xstatic_url,
                            ws_url_path="/websocket")
 
 class Application(tornado.web.Application):
@@ -22,7 +24,11 @@ class Application(tornado.web.Application):
         handlers = [
                 (r"/websocket", pyxterm.TermSocket),
                 (r"/", TerminalPageHandler),
+                (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler,
+                     {'allowed_modules': ['termjs']})
                 ]
+        
+        self.xstatic_url = tornado_xstatic.url_maker('/xstatic/')
         
         if 'template_path' not in kwargs:
             kwargs['template_path'] = TEMPLATE_DIR

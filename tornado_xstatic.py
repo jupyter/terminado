@@ -1,6 +1,5 @@
 import os.path
 import tornado.web
-from xstatic.main import XStatic
 
 class XStaticFileHandler(tornado.web.StaticFileHandler):
     _cached_xstatic_data_dirs = {}
@@ -10,13 +9,12 @@ class XStaticFileHandler(tornado.web.StaticFileHandler):
             self.allowed_modules = set(allowed_modules)
         else:
             self.allowed_modules = None
-        self.prefix = prefix
         
         assert 'root' not in kwargs
-        # XXX: Not wild on passing root=/ , because StaticFileHandler's own
+        # XXX: Not wild on passing path=/ , because StaticFileHandler's own
         # validation will let this serve any file. If this subclass is working
         # correctly, that shouldn't be an issue, but...
-        super(XStaticFileHandler).initialize(root="/")
+        super(XStaticFileHandler, self).initialize(path="/")
         
 
     def parse_url_path(self, url_path):
@@ -52,9 +50,15 @@ class XStaticFileHandler(tornado.web.StaticFileHandler):
             raise tornado.web.HTTPError(403, 
                 "Request for file outside XStatic package %s: %s", mod_name, path)
         
+        print('xs abspath', abs_path)
         return abs_path
 
-def url_maker(prefix):
-    def make_url(package, path): 
-        return prefix + package + "/" + path
+def url_maker(prefix, include_version=True):
+    def make_url(package, path):
+        if include_version:
+            fs_style_path = package + os.path.sep + path.replace("/", os.path.sep)
+            version_bit = "?v=" + XStaticFileHandler.get_version({'static_path': ''}, fs_style_path)
+        else:
+            version_bit = ""
+        return prefix + package + "/" + path + version_bit
     return make_url
