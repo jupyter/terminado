@@ -1,3 +1,7 @@
+"""One shared terminal per URL endpoint
+
+Plus a /new URL which will create a new terminal and redirect to it.
+"""
 from __future__ import print_function, absolute_import
 import logging
 import os.path

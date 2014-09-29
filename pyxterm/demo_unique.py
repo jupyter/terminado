@@ -1,4 +1,4 @@
-"""A single common terminal for all websockets.
+"""A separate terminal for every websocket opened.
 """
 import tornado.web
 # This demo requires tornado_xstatic and XStatic-term.js
@@ -15,7 +15,7 @@ class TerminalPageHandler(tornado.web.RequestHandler):
                            ws_url_path="/websocket")
 
 def main(argv):
-    term_manager = pyxshell.SingleTermManager(shell_command=['bash'])
+    term_manager = pyxshell.UniqueTermManager(shell_command=['bash'])
     handlers = [
                 (r"/websocket", pyxterm.TermSocket,
                      {'term_manager': term_manager}),
