@@ -1,17 +1,10 @@
-import os.path
-import threading
-import webbrowser
-
-import tornado.ioloop
 import tornado.web
 # This demo requires tornado_xstatic and XStatic-term.js
 import tornado_xstatic
 
 import pyxterm
 import pyxshell
-
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "_static")
-TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+from common_demo_stuff import run_and_show_browser, STATIC_DIR, TEMPLATE_DIR
 
 class TerminalPageHandler(tornado.web.RequestHandler):
     def get(self):
@@ -32,16 +25,7 @@ def main(argv):
                       template_path=TEMPLATE_DIR,
                       xstatic_url = tornado_xstatic.url_maker('/xstatic/'))
     app.listen(8765)
-    t = threading.Timer(0.5, webbrowser.open, ("http://localhost:8765",))
-    t.start()
-    loop = tornado.ioloop.IOLoop.instance()
-    try:
-        loop.start()
-    except KeyboardInterrupt:
-        print(" Shutting down on SIGINT")
-    finally:
-        term_manager.shutdown()
-        loop.close()
+    run_and_show_browser("http://localhost:8765/", term_manager)
 
 if __name__ == '__main__':
     main([])

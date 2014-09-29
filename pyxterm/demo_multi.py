@@ -1,11 +1,7 @@
 from __future__ import print_function, absolute_import
 import logging
 import os.path
-import signal
 import sys
-import threading
-import time
-import webbrowser
 
 import tornado.web
 # This demo requires tornado_xstatic and XStatic-term.js
@@ -14,11 +10,9 @@ import tornado_xstatic
 from sslcerts import prepare_ssl_options
 import pyxshell
 import pyxterm
+from common_demo_stuff import run_and_show_browser, STATIC_DIR, TEMPLATE_DIR
 
 AUTH_TYPES = ("none", "login")
-
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "_static")
-TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 class TerminalPageHandler(tornado.web.RequestHandler):
     """Render the /ttyX pages"""
@@ -74,10 +68,6 @@ def run_server(options, args):
                               xstatic_url=tornado_xstatic.url_maker('/xstatic/'),
                               term_manager=term_manager)
 
-    ##logging.warning("DocRoot: "+Doc_rootdir);
-
-    IO_loop = tornado.ioloop.IOLoop.instance()
-
     ssl_options = prepare_ssl_options(options)
 
     Http_server = tornado.httpserver.HTTPServer(application, ssl_options=ssl_options)
@@ -90,44 +80,7 @@ def run_server(options, args):
         pyxshell.setup_logging(logging.WARNING)
         logging.error("**************************Logging to console")
 
-    if options.terminal:
-        try:
-            webbrowser.open_new_tab(new_url)
-        except Exception as excp:
-            print("Error in creating terminal; please open URL %s in browser (%s)"
-                    % (new_url, excp), file=sys.stderr)
-
-    def stop_server():
-        print("\nStopping server", file=sys.stderr)
-        if Http_server:
-            Http_server.stop()
-        def stop_server_aux():
-            IO_loop.stop()
-
-        # Need to stop IO_loop only after all other scheduled shutdowns have completed
-        IO_loop.add_callback(stop_server_aux)
-
-    def sigterm(signal, frame):
-        logging.warning("SIGTERM signal received")
-        IO_loop.add_callback(stop_server)
-    signal.signal(signal.SIGTERM, sigterm)
-
-    try:
-        ioloop_thread = threading.Thread(target=IO_loop.start)
-        ioloop_thread.start()
-        time.sleep(1)   # Time to start thread
-        print("Pyxterm server started", file=sys.stderr)
-        print("Open URL %s in browser to connect" % new_url, file=sys.stderr)
-        print("Type ^C to stop", file=sys.stderr)
-        while Http_server:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("Interrupted", file=sys.stderr)
-
-    finally:
-        if term_manager:
-            term_manager.shutdown()
-    IO_loop.add_callback(stop_server)
+    run_and_show_browser(new_url, term_manager)
 
 def main():
     from optparse import OptionParser
