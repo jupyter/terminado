@@ -114,34 +114,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal = self.term_manager.get_terminal(url_component)
         self.terminal.register_multi(self.pty_callbacks)
 
-        self.term_remote_call("setup", {})
+        self.send_json_message(["setup", {}])
         logging.info("TermSocket.open: Opened %s", self.term_name)
 
     def on_pty_read(self, text):
         self.send_json_message(['stdout', text])
-
-    def term_remote_call(self, method, *args, **kwargs):
-        """
-        kwargs: content=None, content_type="", content_encoding=""
-        """
-        logging.error("term_remote_call: %s", method)
-        try:
-            if not kwargs:
-                # Text message
-                json_msg = json.dumps([method, args])
-                self.term_write(json_msg)
-            else:
-                # Binary message with UTF-16 JSON prefix
-                content = kwargs.get("content")
-                assert isinstance(content, bytes), "Content must be of bytes type"
-                
-                json_prefix = json.dumps([method, args, {"content_type": kwargs.get("content_type",""),
-                                                             "content_encoding": kwargs.get("content_encoding",""),
-                                                             "content_length": len(content)} ]) + "\n\n"
-                content_prefix = json_prefix.encode("utf-16")
-                self.term_write(content_prefix+content, binary=True)
-        except Exception as excp:
-            logging.error("term_remote_call: ERROR %s", excp)
 
     def send_json_message(self, content):
         json_msg = json.dumps(content)
