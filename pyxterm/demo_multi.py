@@ -8,6 +8,7 @@ import time
 import webbrowser
 
 import tornado.web
+import tornado_xstatic
 
 from sslcerts import prepare_ssl_options
 import pyxshell
@@ -17,6 +18,13 @@ AUTH_TYPES = ("none", "login")
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "_static")
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+
+class TerminalPageHandler(tornado.web.RequestHandler):
+    """Render the /ttyX pages"""
+    def get(self, term_name):
+        return self.render("termpage.html", static=self.static_url,
+                           xstatic=self.application.xstatic_url,
+                           ws_url_path="/_websocket/"+term_name)
 
 class NewTerminalHandler(tornado.web.RequestHandler):
     """Redirect to an unused terminal name"""
@@ -30,8 +38,11 @@ class Application(tornado.web.Application):
         handlers = [
                 (r"/_websocket/(%s)" % pyxterm.TERM_NAME_RE_PART, pyxterm.TermSocket),
                 (r"/new/?", NewTerminalHandler),
-                (r"/(tty\d+)/?", pyxterm.TerminalPageHandler),
+                (r"/(tty\d+)/?", TerminalPageHandler),
+                (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler)
                 ]
+
+        self.xstatic_url = tornado_xstatic.url_maker('/xstatic/')
         
         if 'template_path' not in kwargs:
             kwargs['template_path'] = TEMPLATE_DIR

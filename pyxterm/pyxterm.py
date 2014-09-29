@@ -224,9 +224,3 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     def on_pty_died(self):
         self.send_json_message(['disconnect', 1])
         self.close()
-
-class TerminalPageHandler(tornado.web.RequestHandler):
-    """Render the /ttyX pages"""
-    def get(self, term_name):
-        return self.render("termpage.html", static=self.static_url,
-                           ws_url_path="/_websocket/"+term_name)

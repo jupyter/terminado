@@ -49,8 +49,7 @@ class XStaticFileHandler(tornado.web.StaticFileHandler):
         if not abs_path.startswith(root):
             raise tornado.web.HTTPError(403, 
                 "Request for file outside XStatic package %s: %s", mod_name, path)
-        
-        print('xs abspath', abs_path)
+
         return abs_path
 
 def url_maker(prefix, include_version=True):
