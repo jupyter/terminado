@@ -4,8 +4,7 @@ import tornado.web
 # This demo requires tornado_xstatic and XStatic-term.js
 import tornado_xstatic
 
-import pyxterm
-import pyxshell
+from terminado import TermSocket, UniqueTermManager
 from common_demo_stuff import run_and_show_browser, STATIC_DIR, TEMPLATE_DIR
 
 class TerminalPageHandler(tornado.web.RequestHandler):
@@ -15,9 +14,9 @@ class TerminalPageHandler(tornado.web.RequestHandler):
                            ws_url_path="/websocket")
 
 def main(argv):
-    term_manager = pyxshell.UniqueTermManager(shell_command=['bash'])
+    term_manager = UniqueTermManager(shell_command=['bash'])
     handlers = [
-                (r"/websocket", pyxterm.TermSocket,
+                (r"/websocket", TermSocket,
                      {'term_manager': term_manager}),
                 (r"/", TerminalPageHandler),
                 (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler,

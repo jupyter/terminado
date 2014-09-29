@@ -12,8 +12,7 @@ import tornado.web
 import tornado_xstatic
 
 from sslcerts import prepare_ssl_options
-import pyxshell
-import pyxterm
+from terminado import TermSocket, NamedTermManager
 from common_demo_stuff import run_and_show_browser, STATIC_DIR, TEMPLATE_DIR
 
 AUTH_TYPES = ("none", "login")
@@ -31,6 +30,31 @@ class NewTerminalHandler(tornado.web.RequestHandler):
         name, terminal = self.application.settings['term_manager'].new_named_terminal()
         self.redirect("/" + name, permanent=False)
 
+def setup_logging(log_level=logging.ERROR, filename="", file_level=None):
+    file_level = file_level or log_level
+    logger = logging.getLogger()
+    logger.setLevel(min(log_level, file_level))
+
+    formatter = logging.Formatter("%(levelname).1s%(asctime)s %(module).8s.%(lineno).04d %(message)s",
+                                  "%y%m%d/%H:%M")
+
+    if logger.handlers:
+        for handler in logger.handlers:
+            handler.setLevel(log_level)
+            handler.setFormatter(formatter)
+    else:
+        # Console handler
+        chandler = logging.StreamHandler()
+        chandler.setLevel(log_level)
+        chandler.setFormatter(formatter)
+        logger.addHandler(chandler)
+
+    if filename:
+        # File handler
+        fhandler = logging.FileHandler(filename)
+        fhandler.setLevel(file_level)
+        fhandler.setFormatter(formatter)
+        logger.addHandler(fhandler)
 
 def run_server(options, args):
 
@@ -57,12 +81,12 @@ def run_server(options, args):
     else:
         shell_command = ["bash"]
 
-    term_manager = pyxshell.NamedTermManager(shell_command=shell_command,
+    term_manager = NamedTermManager(shell_command=shell_command,
                                              max_terminals=options.max_terminals)
 
     handlers = [
-                (r"/_websocket/(%s)" % pyxterm.TERM_NAME_RE_PART,
-                     pyxterm.TermSocket, {'term_manager': term_manager}),
+                (r"/_websocket/(tty\d+)", TermSocket,
+                     {'term_manager': term_manager}),
                 (r"/new/?", NewTerminalHandler),
                 (r"/(tty\d+)/?", TerminalPageHandler),
                 (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler)
@@ -78,10 +102,10 @@ def run_server(options, args):
     Http_server.listen(http_port, address=http_host)
     if options.logging:
         Log_filename = "pyxterm.log"
-        pyxshell.setup_logging(logging.INFO, Log_filename, logging.INFO)
+        setup_logging(logging.INFO, Log_filename, logging.INFO)
         logging.error("**************************Logging to %s", Log_filename)
     else:
-        pyxshell.setup_logging(logging.WARNING)
+        setup_logging(logging.WARNING)
         logging.error("**************************Logging to console")
 
     run_and_show_browser(new_url, term_manager)

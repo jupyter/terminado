@@ -87,32 +87,6 @@ def match_program_name(name):
             return cmd_comps[0]
     return ""
 
-def setup_logging(log_level=logging.ERROR, filename="", file_level=None):
-    file_level = file_level or log_level
-    logger = logging.getLogger()
-    logger.setLevel(min(log_level, file_level))
-
-    formatter = logging.Formatter("%(levelname).1s%(asctime)s %(module).8s.%(lineno).04d %(message)s",
-                                  "%y%m%d/%H:%M")
-
-    if logger.handlers:
-        for handler in logger.handlers:
-            handler.setLevel(log_level)
-            handler.setFormatter(formatter)
-    else:
-        # Console handler
-        chandler = logging.StreamHandler()
-        chandler.setLevel(log_level)
-        chandler.setFormatter(formatter)
-        logger.addHandler(chandler)
-
-    if filename:
-        # File handler
-        fhandler = logging.FileHandler(filename)
-        fhandler.setLevel(file_level)
-        fhandler.setFormatter(formatter)
-        logger.addHandler(fhandler)
-
 def _exec_new_terminal(cmd, env, working_dir="~"):
     """This is run in the child process after forking.
     
