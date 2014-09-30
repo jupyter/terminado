@@ -127,7 +127,9 @@ class WithEvents(object):
 
     def trigger(self, event, *args):
         err = None
-        for callback in self._event_callbacks[event]:
+        # list() here because callbacks may be registered/unregistered while
+        # we're iterating
+        for callback in list(self._event_callbacks[event]):
             try:
                 callback(*args)
             except Exception as e:
@@ -219,7 +221,12 @@ class Terminal(WithEvents):
 
     def read_ready(self, fd, events):
         assert fd == self.fd
-        data = os.read(self.fd, 65536)
+        try:
+            data = os.read(self.fd, 65536)
+        except OSError:
+            self.trigger('died')
+            return
+
         text = self._decoder.decode(data, final=False)
         self.trigger('read', text)
 
