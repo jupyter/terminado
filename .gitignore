@@ -8,7 +8,8 @@
 README.html
 build/*
 dist/*
-pyxterm.egg-info/*
+MANIFEST
+terminado.egg-info/*
 BAK
 IGNORE
 ORIG
