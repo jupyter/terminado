@@ -236,9 +236,11 @@ class NamedTermManager(TermManagerBase):
         self.start_reading(term)
         return term
 
+    name_template = "%d"
+
     def _next_available_name(self):
         for n in itertools.count(start=1):
-            name = "tty%d" % n
+            name = self.name_template % n
             if name not in self.terminals:
                 return name
 

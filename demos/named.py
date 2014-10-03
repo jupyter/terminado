@@ -85,10 +85,10 @@ def run_server(options, args):
                                              max_terminals=options.max_terminals)
 
     handlers = [
-                (r"/_websocket/(tty\d+)", TermSocket,
+                (r"/_websocket/(\w+)", TermSocket,
                      {'term_manager': term_manager}),
                 (r"/new/?", NewTerminalHandler),
-                (r"/(tty\d+)/?", TerminalPageHandler),
+                (r"/(\w+)/?", TerminalPageHandler),
                 (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler)
                ]
     application = tornado.web.Application(handlers, static_path=STATIC_DIR,
