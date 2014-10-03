@@ -58,6 +58,7 @@ except ImportError:
 import json
 import logging
 import re
+import signal
 
 import tornado.auth
 import tornado.httpserver
@@ -106,13 +107,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         logging.info("TermSocket.open:")
 
-        self.pty_callbacks = [
-            ('read', self.on_pty_read),
-            ('died', self.on_pty_died),
-        ]
         self.term_name = url_component or 'tty'
         self.terminal = self.term_manager.get_terminal(url_component)
-        self.terminal.register_multi(self.pty_callbacks)
+        self.terminal.clients.append(self)
 
         self.send_json_message(["setup", {}])
         logging.info("TermSocket.open: Opened %s", self.term_name)
@@ -170,11 +167,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             if send_cmd:
                 if command[0] == "stdin":
                     text = command[1].replace("\r\n","\n").replace("\r","\n")
-                    self.terminal.pty_write(text)
+                    self.terminal.ptyproc.write(text)
                 else:
-                    self.terminal.remote_call(*command)
+                    pass
+                    #self.terminal.remote_call(*command)
                 if kill_term:
-                    self.terminal.kill()
+                    self.terminal.ptyproc.kill(signal.SIGHUP)
                     self.application.term_manager.discard(self.term_name)
 
         except Exception as excp:
@@ -183,7 +181,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             return
 
     def on_close(self):
-        self.terminal.unregister_multi(self.pty_callbacks)
+        self.terminal.clients.remove(self)
 
     def on_pty_died(self):
         self.send_json_message(['disconnect', 1])

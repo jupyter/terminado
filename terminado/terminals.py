@@ -42,6 +42,8 @@ import time
 import termios
 import tty
 
+from ptyprocess import PtyProcessUnicode
+
 import random
 try:
     random = random.SystemRandom()
@@ -87,157 +89,10 @@ def match_program_name(name):
             return cmd_comps[0]
     return ""
 
-def _exec_new_terminal(cmd, env, working_dir="~"):
-    """This is run in the child process after forking.
-    
-    It ends by calling :func:`os.execvpe` to launch the desired process.
-    """
-    try:
-        os.chdir(working_dir)
-    except Exception:
-        os.chdir(os.path.expanduser("~"))
-
-    # Close all open fd (except stdin, stdout, stderr)
-    os.closerange(3, subprocess.MAXFD)
-
-    # Exec shell
-    os.execvpe(cmd[0], cmd, env)
-
-class WithEvents(object):
-    event_names = []
-    def __init__(self):
-        self._event_callbacks = {name:set() for name in self.event_names}
-
-    def register(self, event, callback):
-        self._event_callbacks[event].add(callback)
-
-    def register_multi(self, events_callbacks):
-        for event, callback in events_callbacks:
-            self.register(event, callback)
-
-    def unregister(self, event, callback):
-        self._event_callbacks[event].discard(callback)
-
-    def unregister_multi(self, events_callbacks):
-        for event, callback in events_callbacks:
-            self.unregister(event, callback)
-
-    def unregister_all(self, event):
-        self._event_callbacks[event].clear()
-
-    def trigger(self, event, *args):
-        err = None
-        # list() here because callbacks may be registered/unregistered while
-        # we're iterating
-        for callback in list(self._event_callbacks[event]):
-            try:
-                callback(*args)
-            except Exception as e:
-                err = e
-
-        if err is not None:
-            raise err
-
-class Terminal(WithEvents):
-    event_names = ['read', 'died']
-
-    def __init__(self, fd, pid, height=25, width=80, winheight=0, winwidth=0,
-                 cookie=0, access_code="", encoding='utf-8'):
-        super(Terminal, self).__init__()
-        self.fd = fd
-        self.pid = pid
-        self.width = width
-        self.height = height
-        self.winwidth = winwidth
-        self.winheight = winheight
-        self.cookie = cookie
-        self.access_code = access_code
-        self.term_encoding = encoding
-        self._decoder = codecs.getincrementaldecoder(encoding)(errors='replace')
-
-        self.current_dir = ""
-        self.update_buf = ""
-
-        self.rpc_set_size(height, width, winheight, winwidth)
-
-        self.output_time = time.time()
-    
-    @classmethod
-    def spawn(cls, shell_command, env, working_dir="~", **kwargs):
-        pid, fd = pty.fork()
-        if pid == 0:
-            _exec_new_terminal(shell_command, env, working_dir)
-            # This will never return, because the process will turn into
-            # whatever shell_command specifies.
-        else:
-            return cls(fd, pid, **kwargs)
-
-    def resize_buffer(self, height, width, winheight=0, winwidth=0, force=False):
-        reset_flag = force or (self.width != width or self.height != height)
-        self.winwidth = winwidth
-        self.winheight = winheight
-        if reset_flag:
-            self.width = width
-            self.height = height
-
-    def rpc_set_size(self, height, width, winheight=0, winwidth=0):
-        # python bug http://python.org/sf/1112949 on amd64
-        self.resize_buffer(height, width, winheight=winheight, winwidth=winwidth)
-        # Hack for buggy TIOCSWINSZ handling: treat large unsigned positive int32 values as negative (same bits)
-        winsz = termios.TIOCSWINSZ if termios.TIOCSWINSZ < 0 else struct.unpack('i',struct.pack('I',termios.TIOCSWINSZ))[0]
-        fcntl.ioctl(self.fd, winsz, struct.pack("HHHH",height,width,0,0))
-
-    def remote_call(self, method, *args, **kwargs):
-        bound_method = getattr(self, "rpc_"+method, None)
-        if not bound_method:
-            raise Exception("Invalid remote method "+method)
-        logging.info("Remote term call %s", method)
-        return bound_method(*args, **kwargs)
-
-    def pty_write(self, data):
-        assert isinstance(data, unicode), "Must write unicode data"
-        raw_data = data.encode(self.term_encoding)
-        nbytes = len(raw_data)
-        offset = 0
-        while offset < nbytes:
-            # Need to break data up into chunks; otherwise it hangs the pty
-            count = min(CHUNK_BYTES, nbytes-offset)
-            retry = 50
-            while count > 0:
-                try:
-                    sent = os.write(self.fd, raw_data[offset:offset+count])
-                    if not sent:
-                        raise Exception("Failed to write to terminal")
-                    offset += sent
-                    count -= sent
-                except OSError as excp:
-                    if excp.errno != errno.EAGAIN:
-                        raise excp
-                    retry -= 1
-                    if retry > 0:
-                        time.sleep(0.01)
-                    else:
-                        raise excp
-
-    def read_ready(self, fd, events):
-        assert fd == self.fd
-        try:
-            data = os.read(self.fd, 65536)
-        except OSError:
-            self.trigger('died')
-            return
-
-        text = self._decoder.decode(data, final=False)
-        self.trigger('read', text)
-
-    def kill(self):
-        try:
-            os.close(self.fd)
-            os.kill(self.pid, signal.SIGTERM)
-        except (IOError, OSError):
-            pass
-
-        self.trigger('died')
+class PtyWithClients(object):
+    def __init__(self, ptyproc):
+        self.ptyproc = ptyproc
+        self.clients = []
 
 class TermManagerBase(object):
     def __init__(self, shell_command, server_url="", term_settings={},
@@ -245,6 +100,8 @@ class TermManagerBase(object):
         self.shell_command = shell_command
         self.server_url = server_url
         self.term_settings = term_settings
+
+        self.ptys_by_fd = {}
 
         if ioloop is not None:
             self.ioloop = ioloop
@@ -271,12 +128,28 @@ class TermManagerBase(object):
         options = self.term_settings.copy()
         options['shell_command'] = self.shell_command
         options.update(kwargs)
-        options['env'] = self.make_term_env(**options)
-        return Terminal.spawn(**options)
+        argv = options['shell_command']
+        env = self.make_term_env(**options)
+        pty = PtyProcessUnicode.spawn(argv, env=env, cwd=options.get('cwd', None))
+        return PtyWithClients(pty)
 
-    def start_reading(self, term):
-        term.register('died', lambda : self.ioloop.remove_handler(term.fd))
-        self.ioloop.add_handler(term.fd, term.read_ready, self.ioloop.READ)
+    def start_reading(self, ptywclients):
+        fd = ptywclients.ptyproc.fd
+        self.ptys_by_fd[fd] = ptywclients
+        self.ioloop.add_handler(fd, self.pty_read, self.ioloop.READ)
+
+    def pty_read(self, fd, events=None):
+        ptywclients = self.ptys_by_fd[fd]
+        try:
+            s = ptywclients.ptyproc.read(65536)
+            for client in ptywclients.clients:
+                client.on_pty_read(s)
+
+        except EOFError:
+            del self.ptys_by_fd[fd]
+            self.ioloop.remove_handler(fd)
+            for client in ptywclients.clients:
+                client.on_pty_died()
 
     def get_terminal(self, url_component=None):
         raise NotImplementedError
@@ -301,7 +174,7 @@ class SingleTermManager(TermManagerBase):
 
     def kill_all(self):
         if self.terminal is not None:
-            self.terminal.kill()
+            self.terminal.ptyproc.kill(signal.SIGTERM)
 
 def MaxTerminalsReached(Exception):
     def __init__(self, max_terminals):
@@ -325,7 +198,7 @@ class UniqueTermManager(TermManagerBase):
 
     def kill_all(self):
         for term in self.terminals:
-            term.kill()
+            term.ptyproc.kill(signal.SIGTERM)
     
 
 class NamedTermManager(TermManagerBase):
@@ -367,7 +240,7 @@ class NamedTermManager(TermManagerBase):
 
     def kill_all(self):
         for term in self.terminals.values():
-            term.kill()
+            term.ptyproc.kill(signal.SIGTERM)
 
 if __name__ == "__main__":
     ## Code to test Terminal on regular terminal
