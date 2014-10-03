@@ -148,8 +148,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     def on_close(self):
         self.terminal.clients.remove(self)
         self.terminal.resize_to_smallest()
+        self.term_manager.client_disconnected(self)
 
     def on_pty_died(self):
         self.send_json_message(['disconnect', 1])
-        self.on_close()
+        self.terminal.clients.remove(self)
         self.close()

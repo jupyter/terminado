@@ -91,6 +91,12 @@ class PtyWithClients(object):
         if (rows, cols) != (minrows, mincols):
             self.ptyproc.setwinsize(minrows, mincols)
 
+    def kill(self, sig=signal.SIGTERM):
+        self.ptyproc.kill(sig)
+        self.ptyproc.fileobj.close()
+        for client in self.clients:
+            client.on_pty_died()
+
 class TermManagerBase(object):
     def __init__(self, shell_command, server_url="", term_settings={},
                  ioloop=None):
@@ -151,6 +157,11 @@ class TermManagerBase(object):
     def get_terminal(self, url_component=None):
         raise NotImplementedError
 
+    def client_disconnected(self, websocket):
+        """Override this to e.g. kill terminals on client disconnection.
+        """
+        pass
+
     def shutdown(self):
         self.kill_all()
 
@@ -171,7 +182,7 @@ class SingleTermManager(TermManagerBase):
 
     def kill_all(self):
         if self.terminal is not None:
-            self.terminal.ptyproc.kill(signal.SIGTERM)
+            self.terminal.kill()
 
 def MaxTerminalsReached(Exception):
     def __init__(self, max_terminals):
@@ -190,12 +201,15 @@ class UniqueTermManager(TermManagerBase):
     def get_terminal(self, url_component=None):
         term = self.new_terminal()
         self.start_reading(term)
-        self.terminals.append(term)
         return term
 
+    def client_disconnected(self, websocket):
+        """Send terminal SIGHUP when client disconnects."""
+        websocket.terminal.ptyproc.terminate()
+
     def kill_all(self):
-        for term in self.terminals:
-            term.ptyproc.kill(signal.SIGTERM)
+        for term in self.ptys_by_fd.values():
+            term.kill()
     
 
 class NamedTermManager(TermManagerBase):
@@ -237,4 +251,4 @@ class NamedTermManager(TermManagerBase):
 
     def kill_all(self):
         for term in self.terminals.values():
-            term.ptyproc.kill(signal.SIGTERM)
+            term.kill()
