@@ -1,23 +1,4 @@
-#!/usr/bin/env python
-
-"""pyxterm.py: Python websocket terminal server for term.js, using pxterm.py as the backend
-
-Requires term.js, pyxterm.js pyxshell.py
-
-To test, run:
-
-  ./pyxterm.py --terminal
-
-to start the server an open a terminal. For help, type
-
-  ./pyxterm.py -h
-
-Default URL to a create a new terminal is http://localhost:8700/new
-
-To create a named terminal, open http://localhost:8700/terminal_name
-
-BSD License
-
+"""Tornado websocket handler to serve a terminal interface.
 """
 
 #
@@ -58,7 +39,6 @@ except ImportError:
 import json
 import logging
 import re
-import signal
 
 import tornado.auth
 import tornado.httpserver
@@ -159,9 +139,6 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if msg_type == "stdin":
             text = command[1].replace("\r\n","\n").replace("\r","\n")
             self.terminal.ptyproc.write(text)
-        elif msg_type == "kill_term":
-            self.terminal.ptyproc.kill(signal.SIGHUP)
-            self.application.term_manager.discard(self.term_name)
         elif msg_type == "errmsg":
             logging.error("Terminal %s: %s", self.term_name, command[1])
         elif msg_type == "set_size":
