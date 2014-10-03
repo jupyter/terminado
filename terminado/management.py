@@ -1,23 +1,5 @@
-#!/usr/bin/env python
-
-""" pyxshell.py: pseudo-tty shell wrapper for terminals
-
-Derived from the public-domain Ajaxterm code, v0.11 (2008-11-13).
-  https://github.com/antonylesuisse/qweb
-  http://antony.lesuisse.org/software/ajaxterm/
-and susequently modified for GraphTerm as lineterm.py, v0.57.0 (2014-07-18)
-  https://github.com/mitotic/graphterm
-
-The contents of this file remain in the public-domain.
-
-To test, run:
-
-  ./pyxshell.py
-
-Type exactly two Control-D's to exit the shell
-
+"""Terminal management for exposing terminals to a web interface using Tornado.
 """
-
 from __future__ import absolute_import, print_function, with_statement
 
 

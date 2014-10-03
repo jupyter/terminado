@@ -1,3 +1,3 @@
 from .websocket import TermSocket
-from .terminals import (TermManagerBase, SingleTermManager,
-                        UniqueTermManager, NamedTermManager)
+from .management import (TermManagerBase, SingleTermManager,
+                         UniqueTermManager, NamedTermManager)

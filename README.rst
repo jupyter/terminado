@@ -3,7 +3,13 @@ Websocket terminal server for term.js
 
 This is a `Tornado <http://tornadoweb.org/>`_ websocket backend for the
 `term.js <https://github.com/chjj/term.js>`_ Javascript terminal emulator
-library. It evolved out of `pyxterm <https://github.com/mitotic/pyxterm>`_.
+library.
+
+It evolved out of `pyxterm <https://github.com/mitotic/pyxterm>`_, which was
+part of `GraphTerm <https://github.com/mitotic/graphterm>`_ (as lineterm.py),
+v0.57.0 (2014-07-18), and ultimately derived from the public-domain `Ajaxterm
+<http://antony.lesuisse.org/software/ajaxterm/>`_ code, v0.11 (2008-11-13) (also
+on Github as part of `QWeb <https://github.com/antonylesuisse/qweb>`_).
 
 Modules:
 
