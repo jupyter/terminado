@@ -28,19 +28,12 @@ else:
     byte_code = lambda x: x
     unicode = str
 
-import codecs
-import errno
-import fcntl
 import itertools
 import logging
 import os
-import pty
 import signal
-import struct
 import subprocess
-import time
 import termios
-import tty
 
 from ptyprocess import PtyProcessUnicode
 
@@ -241,65 +234,3 @@ class NamedTermManager(TermManagerBase):
     def kill_all(self):
         for term in self.terminals.values():
             term.ptyproc.kill(signal.SIGTERM)
-
-if __name__ == "__main__":
-    ## Code to test Terminal on regular terminal
-    ## Re-size terminal to 80x25 before testing
-
-    from optparse import OptionParser
-    usage = "usage: %prog [<shell_command>]"
-    parser = OptionParser(usage=usage)
-    parser.add_option("-l", "--logging",
-                  action="store_true", dest="logging", default=False,
-                  help="Enable logging")
-
-    (options, args) = parser.parse_args()
-
-    shell_cmd = args[:] if args else ["bash"]
-
-    # Determine terminal width, height
-    height, width = struct.unpack("hh", fcntl.ioctl(pty.STDOUT_FILENO, termios.TIOCGWINSZ, "1234"))
-    if not width or not height:
-        try:
-            height, width = [int(os.getenv(var)) for var in ("LINES", "COLUMNS")]
-        except Exception:
-            height, width = 25, 80
-
-    Prompt = "> "
-    Log_file = "pyxshell.log" if options.logging else ""
-    def client_callback(term_name, response_id, command, *args):
-        if command == "stdout":
-            output = args[0]
-            sys.stdout.write(output)
-            sys.stdout.flush()
-
-    Term_manager = TermManager(client_callback, shell_cmd, log_file=Log_file, log_level=logging.INFO)
-    terminal, Term_name, term_cookie = Term_manager.terminal(height=height, width=width)
-
-    print("**Type Control-D Control-D to exit**", file=sys.stderr)
-
-    test_str = b'\xe2\x94\x80 \xe2\x94\x82 \xe2\x94\x8c \xe2\x94\x98 \xe2\x94\x90 \xe2\x94\x94 \xe2\x94\x9c \xe2\x94\xa4 \xe2\x94\xac \xe2\x94\xb4 \xe2\x94\xbc \xe2\x95\x90 \xe2\x95\x91 \xe2\x95\x94 \xe2\x95\x9d \xe2\x95\x97 \xe2\x95\x9a \xe2\x95\xa0 \xe2\x95\xa3 \xe2\x95\xa6 \xe2\x95\xa9 \xe2\x95\xac'.decode("utf-8")
-
-    Term_attr = termios.tcgetattr(pty.STDIN_FILENO)
-    try:
-        tty.setraw(pty.STDIN_FILENO)
-        expectEOF = False
-        terminal.pty_write("echo '%s'\n" % test_str)
-        while True:
-            ##data = raw_input(Prompt)
-            ##Term_manager.write(data+"\n")
-            data = os.read(pty.STDIN_FILENO, 1024)
-            if byte_code(data[0]) == 4:
-                if expectEOF: raise EOFError
-                expectEOF = True
-            else:
-                expectEOF = False
-            if not data:
-                raise EOFError
-            str_data = data.decode("utf-8") if isinstance(data, bytes) else data
-            terminal.pty_write(str_data)
-    except EOFError:
-        Term_manager.shutdown()
-    finally:
-        # Restore terminal attributes
-        termios.tcsetattr(pty.STDIN_FILENO, termios.TCSANOW, Term_attr)
