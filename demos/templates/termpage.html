@@ -43,9 +43,9 @@ window.onload = function() {
     var terminal = make_terminal(document.body, size, ws_url);
     
     window.onresize = function() { 
-      var geom = calculate_size(element);
+      var geom = calculate_size(window);
       terminal.term.resize(geom.cols, geom.rows);
-      ws.send(JSON.stringify(["set_size", geom.rows, geom.cols,
+      terminal.socket.send(JSON.stringify(["set_size", geom.rows, geom.cols,
                                 window.innerHeight, window.innerWidth]));
     };
 };

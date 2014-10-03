@@ -87,6 +87,28 @@ class PtyWithClients(object):
         self.ptyproc = ptyproc
         self.clients = []
 
+    def resize_to_smallest(self):
+        """Set the terminal size to that of the smallest client dimensions.
+        
+        A terminal not using the full space available is much nicer than a
+        terminal trying to use more than the available space, so we keep it 
+        sized to the smallest client.
+        """
+        minrows = mincols = 10001
+        for client in self.clients:
+            rows, cols = client.size
+            if rows is not None and rows < minrows:
+                minrows = rows
+            if cols is not None and cols < mincols:
+                mincols = cols
+
+        if minrows == 10001 or mincols == 10001:
+            return
+        
+        rows, cols = self.ptyproc.getwinsize()
+        if (rows, cols) != (minrows, mincols):
+            self.ptyproc.setwinsize(minrows, mincols)
+
 class TermManagerBase(object):
     def __init__(self, shell_command, server_url="", term_settings={},
                  ioloop=None):

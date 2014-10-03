@@ -82,7 +82,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     def initialize(self, term_manager):
         self.term_manager = term_manager
         self.term_name = ""
-        self.term_cookie = ""
+        self.size = (None, None)
 
     def origin_check(self):
         if "Origin" in self.request.headers:
@@ -154,34 +154,23 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     def on_message(self, message):
         ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
         command, _ = self._parse_message(message)
-            
-        kill_term = False
-        try:
-            send_cmd = True
-            if command[0] == "kill_term":
-                kill_term = True
-            elif command[0] == "errmsg":
-                logging.error("Terminal %s: %s", self.term_name, command[1])
-                send_cmd = False
+        msg_type = command[0]    
 
-            if send_cmd:
-                if command[0] == "stdin":
-                    text = command[1].replace("\r\n","\n").replace("\r","\n")
-                    self.terminal.ptyproc.write(text)
-                else:
-                    pass
-                    #self.terminal.remote_call(*command)
-                if kill_term:
-                    self.terminal.ptyproc.kill(signal.SIGHUP)
-                    self.application.term_manager.discard(self.term_name)
-
-        except Exception as excp:
-            logging.error("TermSocket.on_message: ERROR %s", excp)
-            self.term_remote_call("errmsg", str(excp))
-            return
+        if msg_type == "stdin":
+            text = command[1].replace("\r\n","\n").replace("\r","\n")
+            self.terminal.ptyproc.write(text)
+        elif msg_type == "kill_term":
+            self.terminal.ptyproc.kill(signal.SIGHUP)
+            self.application.term_manager.discard(self.term_name)
+        elif msg_type == "errmsg":
+            logging.error("Terminal %s: %s", self.term_name, command[1])
+        elif msg_type == "set_size":
+            self.size = command[1:3]
+            self.terminal.resize_to_smallest()
 
     def on_close(self):
         self.terminal.clients.remove(self)
+        self.terminal.resize_to_smallest()
 
     def on_pty_died(self):
         self.send_json_message(['disconnect', 1])
