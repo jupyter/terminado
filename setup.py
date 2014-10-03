@@ -21,4 +21,6 @@ setup(name="terminado",
           "Programming Language :: Python :: 2",
           "Programming Language :: Python :: 3",
           "Topic :: Terminals :: Terminal Emulators/X Terminals",
-         ],)
+         ],
+      install_requires=['ptyprocess'],
+)
