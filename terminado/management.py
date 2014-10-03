@@ -94,8 +94,10 @@ class PtyWithClients(object):
     def kill(self, sig=signal.SIGTERM):
         self.ptyproc.kill(sig)
         self.ptyproc.fileobj.close()
+
         for client in self.clients:
             client.on_pty_died()
+        self.clients = []
 
 class TermManagerBase(object):
     def __init__(self, shell_command, server_url="", term_settings={},
@@ -141,16 +143,24 @@ class TermManagerBase(object):
         self.ptys_by_fd[fd] = ptywclients
         self.ioloop.add_handler(fd, self.pty_read, self.ioloop.READ)
 
+    def on_eof(self, ptywclients):
+        # Stop trying to read from that terminal
+        fd = ptywclients.ptyproc.fd
+        del self.ptys_by_fd[fd]
+        self.ioloop.remove_handler(fd)
+        os.close(fd)
+        
+        # This should reap the child process
+        ptywclients.ptyproc.isalive()
+
     def pty_read(self, fd, events=None):
         ptywclients = self.ptys_by_fd[fd]
         try:
             s = ptywclients.ptyproc.read(65536)
             for client in ptywclients.clients:
                 client.on_pty_read(s)
-
         except EOFError:
-            del self.ptys_by_fd[fd]
-            self.ioloop.remove_handler(fd)
+            self.on_eof(ptywclients)
             for client in ptywclients.clients:
                 client.on_pty_died()
 
@@ -166,7 +176,8 @@ class TermManagerBase(object):
         self.kill_all()
 
     def kill_all(self):
-        raise NotImplementedError
+        for term in self.ptys_by_fd.values():
+            term.kill()
 
 
 class SingleTermManager(TermManagerBase):
@@ -181,8 +192,8 @@ class SingleTermManager(TermManagerBase):
         return self.terminal
 
     def kill_all(self):
-        if self.terminal is not None:
-            self.terminal.kill()
+        super(SingleTermManager, self).kill_all()
+        self.terminal = None
 
 def MaxTerminalsReached(Exception):
     def __init__(self, max_terminals):
@@ -196,7 +207,6 @@ class UniqueTermManager(TermManagerBase):
     def __init__(self, max_terminals=None, **kwargs):
         super(UniqueTermManager, self).__init__(**kwargs)
         self.max_terminals = max_terminals
-        self.terminals = []
 
     def get_terminal(self, url_component=None):
         term = self.new_terminal()
@@ -205,11 +215,7 @@ class UniqueTermManager(TermManagerBase):
 
     def client_disconnected(self, websocket):
         """Send terminal SIGHUP when client disconnects."""
-        websocket.terminal.ptyproc.terminate()
-
-    def kill_all(self):
-        for term in self.ptys_by_fd.values():
-            term.kill()
+        websocket.terminal.kill(signal.SIGHUP)
     
 
 class NamedTermManager(TermManagerBase):
@@ -232,6 +238,7 @@ class NamedTermManager(TermManagerBase):
         # Create new terminal
         logging.info("New terminal %s: %s", term_name)
         term = self.new_terminal()
+        term.term_name = term_name
         self.terminals[term_name] = term
         self.start_reading(term)
         return term
@@ -251,6 +258,15 @@ class NamedTermManager(TermManagerBase):
         self.start_reading(term)
         return name, term
 
+    def kill(self, name, sig=signal.SIGTERM):
+        term = self.terminals[name]
+        term.kill()   # This should lead to an EOF
+
+    def on_eof(self, ptywclients):
+        super(NamedTermManager, self).on_eof(ptywclients)
+        name = ptywclients.term_name
+        self.terminals.pop(name, None)
+
     def kill_all(self):
-        for term in self.terminals.values():
-            term.kill()
+        super(NamedTermManager, self).kill_all()
+        self.terminals = {}
