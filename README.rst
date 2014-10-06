@@ -13,8 +13,8 @@ on Github as part of `QWeb <https://github.com/antonylesuisse/qweb>`_).
 
 Modules:
 
-* ``terminado.terminals``: controls launching virtual terminals,
-  and connecting them to Tornado's event loop.
+* ``terminado.management``: controls launching virtual terminals,
+  connecting them to Tornado's event loop, and closing them down.
 * ``terminado.websocket``: Provides a websocket handler for communicating with
   a terminal.
 * ``terminado.uimodule``: Provides a ``Terminal`` Tornado `UI Module
