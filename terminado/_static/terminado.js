@@ -26,7 +26,7 @@ function make_terminal(element, size, ws_url) {
                     term.write(json_msg[1]);
                     break;
                 case "disconnect":
-                    term.write("\r\n\r\n[CLOSED]\r\n");
+                    term.write("\r\n\r\n[Finished... Terminado]\r\n");
                     break;
             }
         };
