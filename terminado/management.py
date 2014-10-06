@@ -1,7 +1,6 @@
 """Terminal management for exposing terminals to a web interface using Tornado.
 """
-from __future__ import absolute_import, print_function, with_statement
-
+from __future__ import absolute_import, print_function
 
 import sys
 if sys.version_info[0] < 3:
@@ -14,55 +13,12 @@ import itertools
 import logging
 import os
 import signal
-import subprocess
-import termios
 
 from ptyprocess import PtyProcessUnicode
 
-import random
-try:
-    random = random.SystemRandom()
-except NotImplementedError:
-    import random
-
-
 ENV_PREFIX = "PYXTERM_"         # Environment variable prefix
-NO_COPY_ENV = set([])         # Do not copy these environment variables
 
 DEFAULT_TERM_TYPE = "xterm"
-
-IDLE_TIMEOUT = 300            # Idle timeout in seconds
-UPDATE_INTERVAL = 0.05        # Fullscreen update time interval
-CHUNK_BYTES = 4096            # Chunk size for receiving data in stdin
-
-# Helper functions
-def make_term_cookie():
-    return "%016d" % random.randrange(10**15, 10**16)
-
-def set_tty_speed(fd, baudrate=termios.B230400):
-    tem_settings = termios.tcgetattr(fd)
-    tem_settings[4:6] = (baudrate, baudrate)
-    termios.tcsetattr(fd, termios.TCSADRAIN, tem_settings)
-
-def set_tty_echo(fd, enabled):
-    tem_settings = termios.tcgetattr(fd)
-    if enabled:
-        tem_settings[3] |= termios.ECHO
-    else:
-        tem_settings[3] &= ~termios.ECHO
-    termios.tcsetattr(fd, termios.TCSADRAIN, tem_settings)
-
-def match_program_name(name):
-    """ Return full path to command name, if running. else null string"""
-    std_out = subprocess.check_output(["ps", "aux"], timeout=1, universal_newlines=True)
-    for line in std_out.split('\n'):
-        comps = line.split(None, 10)
-        if not comps or not comps[-1].strip():
-            continue
-        cmd_comps = comps[-1].split()
-        if cmd_comps[0].endswith("/"+name):
-            return cmd_comps[0]
-    return ""
 
 class PtyWithClients(object):
     def __init__(self, ptyproc):
@@ -116,6 +72,7 @@ class TermManagerBase(object):
             self.ioloop = tornado.ioloop.IOLoop.instance()
         
     def make_term_env(self, height=25, width=80, winheight=0, winwidth=0, **kwargs):
+        """Build the environment variables for the process in the terminal."""
         env = os.environ.copy()
         env["TERM"] = self.term_settings.get("type",DEFAULT_TERM_TYPE)
         dimensions = "%dx%d" % (width, height)
@@ -147,6 +104,8 @@ class TermManagerBase(object):
         self.ioloop.add_handler(fd, self.pty_read, self.ioloop.READ)
 
     def on_eof(self, ptywclients):
+        """Called when the pty has closed.
+        """
         # Stop trying to read from that terminal
         fd = ptywclients.ptyproc.fd
         del self.ptys_by_fd[fd]

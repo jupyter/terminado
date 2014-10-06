@@ -27,8 +27,7 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 #  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import, print_function, with_statement
-
+from __future__ import absolute_import, print_function
 
 # Python3-friendly imports
 try:
@@ -38,25 +37,9 @@ except ImportError:
 
 import json
 import logging
-import re
 
-import tornado.auth
-import tornado.httpserver
-import tornado.ioloop
-import tornado.options
 import tornado.web
 import tornado.websocket
-
-# Allowed terminal names
-TERM_NAME_RE_PART = "[a-z][a-z0-9_]*"
-TERM_NAME_RE = re.compile(r"^%s$" % TERM_NAME_RE_PART)
-
-MAX_COOKIE_STATES = 300
-COOKIE_NAME = "PYXTERM_AUTH"
-COOKIE_TIMEOUT = 86400
-
-AUTH_DIGITS = 12    # Form authentication code hex-digits
-                    # Note: Less than half of the 32 hex-digit state id should be used for form authentication
 
 class TermSocket(tornado.websocket.WebSocketHandler):
     """Handler for a terminal websocket"""
