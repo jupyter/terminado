@@ -1,6 +1,3 @@
-Websocket terminal server for term.js
--------------------------------------
-
 This is a `Tornado <http://tornadoweb.org/>`_ websocket backend for the
 `term.js <https://github.com/chjj/term.js>`_ Javascript terminal emulator
 library.
