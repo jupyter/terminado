@@ -13,7 +13,7 @@ any other::
         ], **kwargs)
 
 Now, a page in your application can connect to ``ws://<host>/websocket``. Using
-file:`terminado/_static/terminado.js`, you can do this using:
+:file:`terminado/_static/terminado.js`, you can do this using:
 
 .. code-block:: javascript
 
