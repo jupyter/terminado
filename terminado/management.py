@@ -100,6 +100,7 @@ class PtyWithClients(object):
         self.clients = []
 
 class TermManagerBase(object):
+    """Base class for a terminal manager."""
     def __init__(self, shell_command, server_url="", term_settings={},
                  ioloop=None):
         self.shell_command = shell_command
@@ -130,6 +131,7 @@ class TermManagerBase(object):
         return env
 
     def new_terminal(self, **kwargs):
+        """Make a new terminal, return a :class:`PtyWithClients` instance."""
         options = self.term_settings.copy()
         options['shell_command'] = self.shell_command
         options.update(kwargs)
@@ -139,6 +141,7 @@ class TermManagerBase(object):
         return PtyWithClients(pty)
 
     def start_reading(self, ptywclients):
+        """Connect a terminal to the tornado event loop to read data from it."""
         fd = ptywclients.ptyproc.fd
         self.ptys_by_fd[fd] = ptywclients
         self.ioloop.add_handler(fd, self.pty_read, self.ioloop.READ)
@@ -154,6 +157,7 @@ class TermManagerBase(object):
         ptywclients.ptyproc.isalive()
 
     def pty_read(self, fd, events=None):
+        """Called by the event loop when there is pty data ready to read."""
         ptywclients = self.ptys_by_fd[fd]
         try:
             s = ptywclients.ptyproc.read(65536)
@@ -165,6 +169,12 @@ class TermManagerBase(object):
                 client.on_pty_died()
 
     def get_terminal(self, url_component=None):
+        """Override in a subclass to give a terminal to a new websocket connection
+        
+        The :class:`TermSocket` handler works with zero or one URL components
+        (capturing groups in the URL spec regex). If it receives one, it is
+        passed as the ``url_component`` parameter; otherwise, this is None.
+        """
         raise NotImplementedError
 
     def client_disconnected(self, websocket):
@@ -181,6 +191,7 @@ class TermManagerBase(object):
 
 
 class SingleTermManager(TermManagerBase):
+    """All connections to the websocket share a common terminal."""
     def __init__(self, **kwargs):
         super(SingleTermManager, self).__init__(**kwargs)
         self.terminal = None
