@@ -59,12 +59,19 @@ AUTH_DIGITS = 12    # Form authentication code hex-digits
                     # Note: Less than half of the 32 hex-digit state id should be used for form authentication
 
 class TermSocket(tornado.websocket.WebSocketHandler):
+    """Handler for a terminal websocket"""
     def initialize(self, term_manager):
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
 
     def origin_check(self):
+        """Reject connections from other origin pages.
+        
+        This is superfluous with Tornado >= 4, as the same check was added to
+        Tornado itself. For now, we keep this around for older versions of
+        Tornado.
+        """
         if "Origin" in self.request.headers:
             origin = self.request.headers.get("Origin")
         else:
@@ -82,6 +89,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             return False
 
     def open(self, url_component=None):
+        """Websocket connection opened.
+        
+        Call our terminal manager to get a terminal, and connect to it as a
+        client.
+        """
         if not self.origin_check():
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
@@ -95,45 +107,21 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         logging.info("TermSocket.open: Opened %s", self.term_name)
 
     def on_pty_read(self, text):
+        """Data read from pty; send to frontend"""
         self.send_json_message(['stdout', text])
 
     def send_json_message(self, content):
         json_msg = json.dumps(content)
         self.write_message(json_msg)
 
-    def term_write(self, data, binary=False):
-        try:
-            self.write_message(data, binary=binary)
-        except Exception as excp:
-            logging.error("term_write: ERROR %s", excp)
-            closed_excp = getattr(tornado.websocket, "WebSocketClosedError", None)
-            if not closed_excp or not isinstance(excp, closed_excp):
-                import traceback
-                logging.info("Error in websocket: %s\n%s", excp, traceback.format_exc())
-            try:
-                # Close websocket on write error
-                self.close()
-            except Exception:
-                pass
-    
-    def _parse_message(self, message):
-        if isinstance(message, bytes):
-            # Binary message with UTF-16 JSON prefix
-            enc_delim = "\n\n".encode("utf-16")
-            offset = message.find(enc_delim)
-            if offset < 0:
-                raise Exception("Delimiter not found in binary message")
-            command = json.loads(message[:offset]).decode("utf-16")
-            content = message[offset+len(enc_delim):]
-        else:
-            command = json.loads(message if isinstance(message,str) else message.encode("UTF-8", "replace"))
-            content = None
-        
-        return command, content
-
     def on_message(self, message):
+        """Handle incoming websocket message
+        
+        We send JSON arrays, where the first element is a string indicating
+        what kind of message this is. Data associated with the message follows.
+        """
         ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
-        command, _ = self._parse_message(message)
+        command = json.loads(message)
         msg_type = command[0]    
 
         if msg_type == "stdin":
@@ -146,10 +134,17 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.terminal.resize_to_smallest()
 
     def on_close(self):
+        """Handle websocket closing.
+        
+        Disconnect from our terminal, and tell the terminal manager we're
+        disconnecting.
+        """
         self.terminal.clients.remove(self)
         self.terminal.resize_to_smallest()
         self.term_manager.client_disconnected(self)
 
     def on_pty_died(self):
+        """Terminal closed: tell the frontend, and close the socket.
+        """
         self.send_json_message(['disconnect', 1])
         self.close()
