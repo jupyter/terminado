@@ -108,8 +108,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         msg_type = command[0]    
 
         if msg_type == "stdin":
-            text = command[1].replace("\r\n","\n").replace("\r","\n")
-            self.terminal.ptyproc.write(text)
+            self.terminal.ptyproc.write(command[1])
         elif msg_type == "errmsg":
             logging.error("Terminal %s: %s", self.term_name, command[1])
         elif msg_type == "set_size":
