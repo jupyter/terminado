@@ -224,6 +224,7 @@ class NamedTermManager(TermManagerBase):
     def new_named_terminal(self):
         name = self._next_available_name()
         term = self.new_terminal()
+        term.term_name = name
         self.terminals[name] = term
         self.start_reading(term)
         return name, term
