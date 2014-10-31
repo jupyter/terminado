@@ -49,11 +49,6 @@ class PtyWithClients(object):
 
     def kill(self, sig=signal.SIGTERM):
         self.ptyproc.kill(sig)
-        self.ptyproc.fileobj.close()
-
-        for client in self.clients:
-            client.on_pty_died()
-        self.clients = []
 
 class TermManagerBase(object):
     """Base class for a terminal manager."""
