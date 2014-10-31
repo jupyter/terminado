@@ -41,6 +41,11 @@ import logging
 import tornado.web
 import tornado.websocket
 
+def _cast_unicode(s):
+    if isinstance(s, bytes):
+        return s.decode('utf-8')
+    return s
+
 class TermSocket(tornado.websocket.WebSocketHandler):
     """Handler for a terminal websocket"""
     def initialize(self, term_manager):
@@ -82,6 +87,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         logging.info("TermSocket.open:")
 
+        url_component = _cast_unicode(url_component)
         self.term_name = url_component or 'tty'
         self.terminal = self.term_manager.get_terminal(url_component)
         self.terminal.clients.append(self)
