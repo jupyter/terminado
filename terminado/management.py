@@ -57,6 +57,7 @@ class TermManagerBase(object):
         self.shell_command = shell_command
         self.server_url = server_url
         self.term_settings = term_settings
+        self.log = logging.getLogger(__name__)
 
         self.ptys_by_fd = {}
 
@@ -103,6 +104,7 @@ class TermManagerBase(object):
         """
         # Stop trying to read from that terminal
         fd = ptywclients.ptyproc.fd
+        self.log.info("EOF on FD %d; stopping reading", fd)
         del self.ptys_by_fd[fd]
         self.ioloop.remove_handler(fd)
         os.close(fd)
@@ -180,6 +182,7 @@ class UniqueTermManager(TermManagerBase):
 
     def client_disconnected(self, websocket):
         """Send terminal SIGHUP when client disconnects."""
+        self.log.info("Websocket closed, sending SIGHUP to terminal.")
         websocket.terminal.kill(signal.SIGHUP)
     
 
@@ -201,7 +204,7 @@ class NamedTermManager(TermManagerBase):
             raise MaxTerminalsReached(self.max_terminals)
 
         # Create new terminal
-        logging.info("New terminal %s: %s", term_name)
+        self.log.info("New terminal with specified name: %s", term_name)
         term = self.new_terminal()
         term.term_name = term_name
         self.terminals[term_name] = term
@@ -219,6 +222,7 @@ class NamedTermManager(TermManagerBase):
     def new_named_terminal(self):
         name = self._next_available_name()
         term = self.new_terminal()
+        self.log.info("New terminal with automatic name: %s", name)
         term.term_name = name
         self.terminals[name] = term
         self.start_reading(term)
@@ -231,6 +235,7 @@ class NamedTermManager(TermManagerBase):
     def on_eof(self, ptywclients):
         super(NamedTermManager, self).on_eof(ptywclients)
         name = ptywclients.term_name
+        self.log.info("Terminal %s closed", name)
         self.terminals.pop(name, None)
 
     def kill_all(self):

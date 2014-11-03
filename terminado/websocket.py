@@ -52,6 +52,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
+        self.log = logging.getLogger(__name__)
 
     def origin_check(self):
         """Reject connections from other origin pages.
@@ -73,7 +74,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if host == ws_host:
             return True
         else:
-            logging.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
+            self.log.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
             return False
 
     def open(self, url_component=None):
@@ -85,7 +86,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if not self.origin_check():
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
-        logging.info("TermSocket.open:")
+        self.log.info("TermSocket.open: %s", url_component)
 
         url_component = _cast_unicode(url_component)
         self.term_name = url_component or 'tty'
@@ -93,7 +94,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal.clients.append(self)
 
         self.send_json_message(["setup", {}])
-        logging.info("TermSocket.open: Opened %s", self.term_name)
+        self.log.info("TermSocket.open: Opened %s", self.term_name)
 
     def on_pty_read(self, text):
         """Data read from pty; send to frontend"""
@@ -116,7 +117,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if msg_type == "stdin":
             self.terminal.ptyproc.write(command[1])
         elif msg_type == "errmsg":
-            logging.error("Terminal %s: %s", self.term_name, command[1])
+            self.log.error("Terminal %s: %s", self.term_name, command[1])
         elif msg_type == "set_size":
             self.size = command[1:3]
             self.terminal.resize_to_smallest()
@@ -127,6 +128,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         Disconnect from our terminal, and tell the terminal manager we're
         disconnecting.
         """
+        self.log.info("Websocket closed")
         self.terminal.clients.remove(self)
         self.terminal.resize_to_smallest()
         self.term_manager.client_disconnected(self)
