@@ -52,7 +52,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
-        self.log = logging.getLogger(__name__)
+
+        self._log = logging.getLogger(__name__)
 
     def origin_check(self):
         """Reject connections from other origin pages.
@@ -74,7 +75,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if host == ws_host:
             return True
         else:
-            self.log.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
+            self._log.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
             return False
 
     def open(self, url_component=None):
@@ -86,7 +87,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if not self.origin_check():
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
-        self.log.info("TermSocket.open: %s", url_component)
+        self._log.info("TermSocket.open: %s", url_component)
 
         url_component = _cast_unicode(url_component)
         self.term_name = url_component or 'tty'
@@ -94,7 +95,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal.clients.append(self)
 
         self.send_json_message(["setup", {}])
-        self.log.info("TermSocket.open: Opened %s", self.term_name)
+        self._log.info("TermSocket.open: Opened %s", self.term_name)
 
     def on_pty_read(self, text):
         """Data read from pty; send to frontend"""
@@ -126,7 +127,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         Disconnect from our terminal, and tell the terminal manager we're
         disconnecting.
         """
-        self.log.info("Websocket closed")
+        self._log.info("Websocket closed")
         self.terminal.clients.remove(self)
         self.terminal.resize_to_smallest()
         self.term_manager.client_disconnected(self)
