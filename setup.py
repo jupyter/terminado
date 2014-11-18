@@ -4,7 +4,7 @@ with open('README.rst') as f:
     readme = f.read()
 
 setup(name="terminado",
-      version='0.3',
+      version='0.3.1',
       description="Terminals served to term.js using Tornado websockets",
       long_description=readme,
       author='Thomas Kluyver',
