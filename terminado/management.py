@@ -15,6 +15,8 @@ import os
 import signal
 
 from ptyprocess import PtyProcessUnicode
+from tornado import gen
+from tornado.ioloop import IOLoop
 
 ENV_PREFIX = "PYXTERM_"         # Environment variable prefix
 
@@ -49,6 +51,54 @@ class PtyWithClients(object):
 
     def kill(self, sig=signal.SIGTERM):
         self.ptyproc.kill(sig)
+    
+    @gen.coroutine
+    def terminate(self, force=False):
+        '''This forces a child process to terminate. It starts nicely with
+        SIGHUP and SIGINT. If "force" is True then moves onto SIGKILL. This
+        returns True if the child was terminated. This returns False if the
+        child could not be terminated. '''
+        
+        loop = IOLoop.current()
+        sleep = lambda : gen.Task(loop.add_timeout, loop.time() + self.ptyproc.delayafterterminate)
+
+        if not self.ptyproc.isalive():
+            raise gen.Return(True)
+        try:
+            self.kill(signal.SIGHUP)
+            yield sleep()
+            if not self.ptyproc.isalive():
+                raise gen.Return(True)
+            self.kill(signal.SIGCONT)
+            yield sleep()
+            if not self.ptyproc.isalive():
+                raise gen.Return(True)
+            self.kill(signal.SIGINT)
+            yield sleep()
+            if not self.ptyproc.isalive():
+                raise gen.Return(True)
+            self.kill(signal.SIGTERM)
+            yield sleep()
+            if not self.ptyproc.isalive():
+                raise gen.Return(True)
+            if force:
+                self.kill(signal.SIGKILL)
+                yield sleep()
+                if not self.ptyproc.isalive():
+                    raise gen.Return(True)
+                else:
+                    raise gen.Return(False)
+            raise gen.Return(False)
+        except OSError:
+            # I think there are kernel timing issues that sometimes cause
+            # this to happen. I think isalive() reports True, but the
+            # process is dead to the kernel.
+            # Make one last attempt to see if the kernel is up to date.
+            yield sleep()
+            if not self.ptyproc.isalive():
+                raise gen.Return(True)
+            else:
+                raise gen.Return(False)
 
 class TermManagerBase(object):
     """Base class for a terminal manager."""
@@ -138,12 +188,18 @@ class TermManagerBase(object):
         """
         pass
 
+    @gen.coroutine
     def shutdown(self):
-        self.kill_all()
+        yield self.kill_all()
 
+    @gen.coroutine
     def kill_all(self):
+        futures = []
         for term in self.ptys_by_fd.values():
-            term.kill()
+            futures.append(term.terminate(force=True))
+        # wait for futures to finish
+        for f in futures:
+            yield f
 
 
 class SingleTermManager(TermManagerBase):
@@ -157,9 +213,10 @@ class SingleTermManager(TermManagerBase):
             self.terminal = self.new_terminal()
             self.start_reading(self.terminal)
         return self.terminal
-
+    
+    @gen.coroutine
     def kill_all(self):
-        super(SingleTermManager, self).kill_all()
+        yield super(SingleTermManager, self).kill_all()
         self.terminal = None
 
 def MaxTerminalsReached(Exception):
@@ -231,13 +288,19 @@ class NamedTermManager(TermManagerBase):
     def kill(self, name, sig=signal.SIGTERM):
         term = self.terminals[name]
         term.kill()   # This should lead to an EOF
-
+    
+    @gen.coroutine
+    def terminate(self, name, force=False):
+        term = self.terminals[name]
+        yield term.terminate(force=force)
+    
     def on_eof(self, ptywclients):
         super(NamedTermManager, self).on_eof(ptywclients)
         name = ptywclients.term_name
         self.log.info("Terminal %s closed", name)
         self.terminals.pop(name, None)
-
+    
+    @gen.coroutine
     def kill_all(self):
-        super(NamedTermManager, self).kill_all()
+        yield super(NamedTermManager, self).kill_all()
         self.terminals = {}
