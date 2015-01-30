@@ -92,6 +92,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         url_component = _cast_unicode(url_component)
         self.term_name = url_component or 'tty'
         self.terminal = self.term_manager.get_terminal(url_component)
+        for s in self.terminal.read_buffer:
+            self.on_pty_read(s)
         self.terminal.clients.append(self)
 
         self.send_json_message(["setup", {}])

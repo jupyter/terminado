@@ -9,6 +9,7 @@ else:
     byte_code = lambda x: x
     unicode = str
 
+from collections import deque
 import itertools
 import logging
 import os
@@ -26,6 +27,10 @@ class PtyWithClients(object):
     def __init__(self, ptyproc):
         self.ptyproc = ptyproc
         self.clients = []
+        # Store the last few things read, so when a new client connects,
+        # it can show e.g. the most recent prompt, rather than absolutely
+        # nothing.
+        self.read_buffer = deque([], maxlen=10)
 
     def resize_to_smallest(self):
         """Set the terminal size to that of the smallest client dimensions.
@@ -167,6 +172,7 @@ class TermManagerBase(object):
         ptywclients = self.ptys_by_fd[fd]
         try:
             s = ptywclients.ptyproc.read(65536)
+            ptywclients.read_buffer.append(s)
             for client in ptywclients.clients:
                 client.on_pty_read(s)
         except EOFError:
