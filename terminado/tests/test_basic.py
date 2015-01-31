@@ -13,13 +13,6 @@ import tornado.testing
 import logging
 import json
 
-#gen_log = logging.getLogger("tornado.general")
-#gen_log.setLevel(logging.DEBUG)
-#app_log = logging.getLogger("tornado.application")
-#app_log.setLevel(logging.DEBUG)
-#access_log = logging.getLogger("tornado.access")
-#access_log.setLevel(logging.DEBUG)
-
 class BasicTest(tornado.testing.AsyncHTTPTestCase):
 	def get_app(self):
 		return tornado.web.Application([
