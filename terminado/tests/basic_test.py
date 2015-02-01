@@ -5,7 +5,7 @@
 from __future__ import absolute_import, print_function
 
 import unittest
-from terminado import SingleTermManager, TermSocket
+from terminado import NamedTermManager, TermSocket
 import tornado
 import tornado.httpserver
 import tornado.httpclient
@@ -17,7 +17,7 @@ class BasicTest(tornado.testing.AsyncHTTPTestCase):
     def get_app(self):
         return tornado.web.Application([
                     (r"/websocket/(\w+)", TermSocket,
-                        {'term_manager': SingleTermManager(shell_command=['bash'], ioloop=self.io_loop)}),
+                        {'term_manager': NamedTermManager(shell_command=['bash'], ioloop=self.io_loop)}),
                 ], debug=True)
 
     @tornado.gen.coroutine
