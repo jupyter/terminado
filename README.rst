@@ -60,3 +60,7 @@ Usage example:
 
 See the `demos directory <https://github.com/takluyver/terminado/tree/master/demos>`_
 for more examples. This is a simplified version of the ``single.py`` demo.
+
+Run the unit tests with:
+
+    $ nosetests
