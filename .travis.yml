@@ -1,0 +1,10 @@
+language: python
+python:
+  - "2.7"
+  - "3.3"
+  - "3.4"
+# command to run tests
+script: nosetests
+
+# Enable new Travis stack, should speed up builds
+sudo: false
