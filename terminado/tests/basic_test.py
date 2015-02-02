@@ -30,16 +30,20 @@ class BasicTest(tornado.testing.AsyncHTTPTestCase):
         ws = yield tornado.websocket.websocket_connect(request)
         raise tornado.gen.Return(ws)
 
+    @tornado.gen.coroutine
+    def read_json(self, ws):
+        """Helper:  read a message, parse as JSON"""
+        response = yield ws.read_message()
+        raise tornado.gen.Return(json.loads(response))
+
     @tornado.testing.gen_test
     def test_basic(self):
         ws = yield self.ws_connect("/websocket/term1")
-        response = yield ws.read_message()              # Setup message
-        j = json.loads(response)
-        self.assertEqual(j, ['setup', {}])
+        response = yield self.read_json(ws)             # Setup message
+        self.assertEqual(response, ['setup', {}])
 
-        response = yield ws.read_message()              # Command prompt
-        j = json.loads(response)
-        self.assertEqual(j[0], 'stdout')
+        response = yield self.read_json(ws)             # Command prompt
+        self.assertEqual(response[0], 'stdout')
         ws.close()
 
 if __name__ == '__main__':
