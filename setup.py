@@ -10,7 +10,7 @@ setup(name="terminado",
       author='Thomas Kluyver',
       author_email="thomas@kluyver.me.uk",
       url="https://github.com/takluyver/terminado",
-      packages=['terminado'],
+      packages=['terminado', 'terminado.tests'],
       package_data={'terminado': ['uimod_embed.js',
                                   '_static/*',
                              ]
