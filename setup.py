@@ -4,13 +4,13 @@ with open('README.rst') as f:
     readme = f.read()
 
 setup(name="terminado",
-      version='0.3.3',
+      version='0.4',
       description="Terminals served to term.js using Tornado websockets",
       long_description=readme,
       author='Thomas Kluyver',
       author_email="thomas@kluyver.me.uk",
       url="https://github.com/takluyver/terminado",
-      packages=['terminado'],
+      packages=['terminado', 'terminado.tests'],
       package_data={'terminado': ['uimod_embed.js',
                                   '_static/*',
                              ]
