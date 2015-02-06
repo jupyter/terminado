@@ -9,49 +9,84 @@ from terminado import *
 import tornado
 import tornado.httpserver
 from tornado.httpclient import HTTPError
+from tornado.ioloop import IOLoop
 import tornado.testing
+import datetime
 import logging
 import json
 
-class TestTermManager(object):
+#
+# The timeout we use to assume no more messages are coming
+# from the sever.
+#
+DONE_TIMEOUT = 0.2
+
+class TestTermClient(object):
     """Test connection to a terminal manager"""
-    def __init__(self, path, test_case):
-        """Open a Websocket connection to the localhost"""
-        port = test_case.get_http_port()
-        url = 'ws://127.0.0.1:%d%s' % (port, path)
-        request = tornado.httpclient.HTTPRequest(url, 
-                    headers={'Origin' : 'http://127.0.0.1:%d' % port})
-        self.ws_future = tornado.websocket.websocket_connect(request)
-        self.stdout = ""
+    def __init__(self, websocket):
+        self.ws = websocket
+        self.pending_read = None
 
     @tornado.gen.coroutine
     def read_msg(self):
-        ws = yield self.ws_future
-        response = yield ws.read_message()
-        msg = json.loads(response)
 
-        # If stdout output, save it
-        if msg[0] == 'stdout':
-            self.stdout += msg[1]
-        raise tornado.gen.Return(msg)
+        # Because the Tornado Websocket client has no way to cancel
+        # a pending read, we have to keep track of them...
+        if self.pending_read is None:
+            self.pending_read = self.ws.read_message()
+
+        response = yield self.pending_read
+        self.pending_read = None
+        raise tornado.gen.Return(json.loads(response))
 
     @tornado.gen.coroutine
+    def read_all_msg(self, timeout=DONE_TIMEOUT):
+        """Read messages until read times out"""
+        msglist = []
+        delta = datetime.timedelta(seconds=timeout)
+        while True:
+            try:
+                mf = self.read_msg()
+                msg = yield tornado.gen.with_timeout(delta, mf)
+            except tornado.gen.TimeoutError:
+                raise tornado.gen.Return(msglist)
+
+            msglist.append(msg)
+
     def write_msg(self, msg):
-        ws = yield self.ws_future
-        ws.write_message(json.dumps(msg))
+        self.ws.write_message(json.dumps(msg))
 
     @tornado.gen.coroutine
+    def read_stdout(self, timeout=DONE_TIMEOUT):
+        """Read standard output until timeout read reached,
+           return stdout and any non-stdout msgs received."""
+        msglist = yield self.read_all_msg(timeout)
+        stdout = "".join([msg[1] for msg in msglist if msg[0] == 'stdout'])
+        othermsg = [msg for msg in msglist if msg[0] != 'stdout']
+        raise tornado.gen.Return((stdout, othermsg))
+
     def write_stdin(self, data):
-        """Write to terminal's stdin"""
+        """Write to terminal stdin"""
         self.write_msg(['stdin', data])
 
-    @tornado.gen.coroutine
     def close(self):
-        ws = yield self.ws_future
-        ws.close()
+        self.ws.close()
 
+class TermTestCase(tornado.testing.AsyncHTTPTestCase):
+    @tornado.gen.coroutine
 
-class BasicTest(tornado.testing.AsyncHTTPTestCase):
+    # Factory for TestTermClient, because it has to be a Tornado co-routine.
+    # See:  https://github.com/tornadoweb/tornado/issues/1161
+    def get_term_client(self, path):
+        port = self.get_http_port()
+        url = 'ws://127.0.0.1:%d%s' % (port, path)
+        request = tornado.httpclient.HTTPRequest(url,
+                    headers={'Origin' : 'http://127.0.0.1:%d' % port})
+
+        ws = yield tornado.websocket.websocket_connect(request)
+        raise tornado.gen.Return(TestTermClient(ws))
+
+class BasicTest(TermTestCase):
     def get_app(self):
         named_tm = NamedTermManager(shell_command=['bash'], ioloop=self.io_loop)
         single_tm = SingleTermManager(shell_command=['bash'], ioloop=self.io_loop)
@@ -67,7 +102,7 @@ class BasicTest(tornado.testing.AsyncHTTPTestCase):
     @tornado.testing.gen_test
     def test_basic(self):
         for url in self.test_urls:
-            tm = TestTermManager(url, self)
+            tm = yield self.get_term_client(url)
             response = yield tm.read_msg()                    
             self.assertEqual(response, ['setup', {}])
 
@@ -80,12 +115,23 @@ class BasicTest(tornado.testing.AsyncHTTPTestCase):
     @tornado.testing.gen_test
     def test_named_no_name(self):
         with self.assertRaises(HTTPError) as context:
-            tm = TestTermManager('/named/', self)
+            tm = yield self.get_term_client('/named/')
             yield tm.read_msg()
 
         # Not found
         self.assertEqual(context.exception.code, 404)
         self.assertEqual(context.exception.response.code, 404)
+
+    @tornado.testing.gen_test
+    def test_basic_command(self):
+        for url in self.test_urls:
+            tm = yield self.get_term_client('/named/foo')
+            yield tm.read_all_msg()
+            tm.write_stdin("whoami\r")
+            (stdout, other) = yield tm.read_stdout()
+            self.assertEqual(stdout[:6], "whoami")
+            self.assertEqual(other, [])
+            tm.close()
 
 if __name__ == '__main__':
     unittest.main()
