@@ -73,10 +73,10 @@ class TestTermClient(object):
         self.ws.close()
 
 class TermTestCase(tornado.testing.AsyncHTTPTestCase):
-    @tornado.gen.coroutine
 
     # Factory for TestTermClient, because it has to be a Tornado co-routine.
     # See:  https://github.com/tornadoweb/tornado/issues/1161
+    @tornado.gen.coroutine
     def get_term_client(self, path):
         port = self.get_http_port()
         url = 'ws://127.0.0.1:%d%s' % (port, path)
@@ -86,12 +86,19 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
         ws = yield tornado.websocket.websocket_connect(request)
         raise tornado.gen.Return(TestTermClient(ws))
 
-class BasicTest(TermTestCase):
     def get_app(self):
         named_tm = NamedTermManager(shell_command=['bash'], ioloop=self.io_loop)
         single_tm = SingleTermManager(shell_command=['bash'], ioloop=self.io_loop)
         unique_tm = UniqueTermManager(shell_command=['bash'], ioloop=self.io_loop)
+        
+        class NewTerminalHandler(tornado.web.RequestHandler):
+            """Create a new named terminal, return redirect"""
+            def get(self):
+                name, terminal = named_tm.new_named_terminal()
+                self.redirect("/named/" + name, permanent=False)
+
         return tornado.web.Application([
+                    (r"/new",         NewTerminalHandler),
                     (r"/named/(\w+)", TermSocket, {'term_manager': named_tm}),
                     (r"/single",      TermSocket, {'term_manager': single_tm}),
                     (r"/unique",      TermSocket, {'term_manager': unique_tm})
@@ -99,6 +106,7 @@ class BasicTest(TermTestCase):
 
     test_urls = ('/named/term1', '/single', '/unique')
 
+class CommonTests(TermTestCase):
     @tornado.testing.gen_test
     def test_basic(self):
         for url in self.test_urls:
@@ -113,16 +121,6 @@ class BasicTest(TermTestCase):
             tm.close()
 
     @tornado.testing.gen_test
-    def test_named_no_name(self):
-        with self.assertRaises(HTTPError) as context:
-            tm = yield self.get_term_client('/named/')
-            yield tm.read_msg()
-
-        # Not found
-        self.assertEqual(context.exception.code, 404)
-        self.assertEqual(context.exception.response.code, 404)
-
-    @tornado.testing.gen_test
     def test_basic_command(self):
         for url in self.test_urls:
             tm = yield self.get_term_client('/named/foo')
@@ -132,6 +130,33 @@ class BasicTest(TermTestCase):
             self.assertEqual(stdout[:6], "whoami")
             self.assertEqual(other, [])
             tm.close()
+
+class NamedTermTests(TermTestCase):
+    @tornado.testing.gen_test
+    def test_no_name(self):
+        with self.assertRaises(HTTPError) as context:
+            tm = yield self.get_term_client('/named/')
+            yield tm.read_msg()
+
+        # Not found
+        self.assertEqual(context.exception.code, 404)
+        self.assertEqual(context.exception.response.code, 404)
+
+    def test_new(self):
+        response = self.fetch("/new", follow_redirects=False)
+        self.assertEqual(response.code, 302)
+        url = response.headers["Location"]
+
+        # Check that the given terminal name works
+        tm = self.get_term_client(url)
+        tm.add_done_callback(self.stop)
+        self.wait()
+
+class SingleTermTests(TermTestCase):
+    pass
+
+class UniqueTermTests(TermTestCase):
+    pass
 
 if __name__ == '__main__':
     unittest.main()
