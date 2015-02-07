@@ -72,6 +72,7 @@ class TestTermClient(object):
     @tornado.gen.coroutine
     def get_pid(self):
         """Get process ID of terminal shell process"""
+        yield self.read_stdout()                          # Clear out any pending
         self.write_stdin("echo $$\r")
         (stdout, extra) = yield self.read_stdout()
         pid = int(stdout.split('\n')[1])
@@ -95,10 +96,8 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
         raise tornado.gen.Return(TestTermClient(ws))
 
     @tornado.gen.coroutine
-    def get_term_clients(self, paths, read_stdout=False):
+    def get_term_clients(self, paths):
         tms = yield [self.get_term_client(path) for path in paths]
-        if read_stdout:
-            yield [tm.read_stdout() for tm in tms]
         raise tornado.gen.Return(tms)
 
     def get_app(self):
@@ -170,7 +169,7 @@ class NamedTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_namespace(self):
         names = ["/named/1"]*2 + ["/named/2"]*2
-        tms = yield self.get_term_clients(names, read_stdout=True)
+        tms = yield self.get_term_clients(names)
         pids = yield [tm.get_pid() for tm in tms]
         self.assertEqual(pids[0], pids[1])
         self.assertEqual(pids[2], pids[3])
@@ -179,14 +178,14 @@ class NamedTermTests(TermTestCase):
 class SingleTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_single_process(self):
-        tms = yield self.get_term_clients(["/single", "/single"], read_stdout=True)
+        tms = yield self.get_term_clients(["/single", "/single"])
         pids = yield [tm.get_pid() for tm in tms]
         self.assertEqual(pids[0], pids[1])
 
 class UniqueTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_unique_processes(self):
-        tms = yield self.get_term_clients(["/unique", "/unique"], read_stdout=True)
+        tms = yield self.get_term_clients(["/unique", "/unique"])
         pids = yield [tm.get_pid() for tm in tms]
         self.assertNotEqual(pids[0], pids[1])
 
