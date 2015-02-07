@@ -69,6 +69,14 @@ class TestTermClient(object):
         """Write to terminal stdin"""
         self.write_msg(['stdin', data])
 
+    @tornado.gen.coroutine
+    def get_pid(self):
+        """Get process ID of terminal shell process"""
+        self.write_stdin("echo $$\r")
+        (stdout, extra) = yield self.read_stdout()
+        pid = int(stdout.split('\n')[1])
+        raise tornado.gen.Return(pid)
+
     def close(self):
         self.ws.close()
 
@@ -85,6 +93,13 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
         ws = yield tornado.websocket.websocket_connect(request)
         raise tornado.gen.Return(TestTermClient(ws))
+
+    @tornado.gen.coroutine
+    def get_term_clients(self, paths, read_stdout=False):
+        tms = yield [self.get_term_client(path) for path in paths]
+        if read_stdout:
+            yield [tm.read_stdout() for tm in tms]
+        raise tornado.gen.Return(tms)
 
     def get_app(self):
         named_tm = NamedTermManager(shell_command=['bash'], ioloop=self.io_loop)
@@ -152,11 +167,28 @@ class NamedTermTests(TermTestCase):
         tm.add_done_callback(self.stop)
         self.wait()
 
+    @tornado.testing.gen_test
+    def test_namespace(self):
+        names = ["/named/1"]*2 + ["/named/2"]*2
+        tms = yield self.get_term_clients(names, read_stdout=True)
+        pids = yield [tm.get_pid() for tm in tms]
+        self.assertEqual(pids[0], pids[1])
+        self.assertEqual(pids[2], pids[3])
+        self.assertNotEqual(pids[0], pids[3]) 
+
 class SingleTermTests(TermTestCase):
-    pass
+    @tornado.testing.gen_test
+    def test_single_process(self):
+        tms = yield self.get_term_clients(["/single", "/single"], read_stdout=True)
+        pids = yield [tm.get_pid() for tm in tms]
+        self.assertEqual(pids[0], pids[1])
 
 class UniqueTermTests(TermTestCase):
-    pass
+    @tornado.testing.gen_test
+    def test_unique_processes(self):
+        tms = yield self.get_term_clients(["/unique", "/unique"], read_stdout=True)
+        pids = yield [tm.get_pid() for tm in tms]
+        self.assertNotEqual(pids[0], pids[1])
 
 if __name__ == '__main__':
     unittest.main()
