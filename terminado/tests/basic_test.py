@@ -19,7 +19,7 @@ import json
 # The timeout we use to assume no more messages are coming
 # from the sever.
 #
-DONE_TIMEOUT = 0.2
+DONE_TIMEOUT = 0.5
 
 MAX_TERMS = 5                       # Testing thresholds
 
