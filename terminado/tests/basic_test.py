@@ -215,7 +215,7 @@ class UniqueTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_max_terminals(self):
         tms = yield self.get_term_clients(['/unique'] * MAX_TERMS)
-        pids = yield [tm.get_pid() for tm in tms]
+        pids = yield self.get_pids(tms)
         self.assertEqual(len(set(pids)), MAX_TERMS)        # All PIDs the same
 
         # MAX_TERMS+1 should fail
