@@ -21,6 +21,8 @@ import json
 #
 DONE_TIMEOUT = 0.2
 
+MAX_TERMS = 5                       # Testing thresholds
+
 class TestTermClient(object):
     """Test connection to a terminal manager"""
     def __init__(self, websocket):
@@ -100,10 +102,21 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
         tms = yield [self.get_term_client(path) for path in paths]
         raise tornado.gen.Return(tms)
 
+    @tornado.gen.coroutine
+    def get_pids(self, tm_list):
+        pids = []
+        for tm in tm_list:                  # Must be sequential, in case terms are shared
+            pid = yield tm.get_pid()
+            pids.append(pid)
+
+        raise tornado.gen.Return(pids)
+
     def get_app(self):
-        named_tm = NamedTermManager(shell_command=['bash'], ioloop=self.io_loop)
+        named_tm = NamedTermManager(shell_command=['bash'], max_terminals=MAX_TERMS,
+                                        ioloop=self.io_loop)
         single_tm = SingleTermManager(shell_command=['bash'], ioloop=self.io_loop)
-        unique_tm = UniqueTermManager(shell_command=['bash'], ioloop=self.io_loop)
+        unique_tm = UniqueTermManager(shell_command=['bash'], max_terminals=MAX_TERMS,
+                                        ioloop=self.io_loop)
         
         class NewTerminalHandler(tornado.web.RequestHandler):
             """Create a new named terminal, return redirect"""
@@ -118,7 +131,7 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
                     (r"/unique",      TermSocket, {'term_manager': unique_tm})
                 ], debug=True)
 
-    test_urls = ('/named/term1', '/single', '/unique')
+    test_urls = ('/named/term1', '/unique', '/single')
 
 class CommonTests(TermTestCase):
     @tornado.testing.gen_test
@@ -170,24 +183,43 @@ class NamedTermTests(TermTestCase):
     def test_namespace(self):
         names = ["/named/1"]*2 + ["/named/2"]*2
         tms = yield self.get_term_clients(names)
-        pids = yield [tm.get_pid() for tm in tms]
+        pids = yield self.get_pids(tms)
+
         self.assertEqual(pids[0], pids[1])
         self.assertEqual(pids[2], pids[3])
-        self.assertNotEqual(pids[0], pids[3]) 
+        self.assertNotEqual(pids[0], pids[3])
+
+    @tornado.testing.gen_test
+    def test_max_terminals(self):
+        urls = ["/named/%d" % i for i in range(MAX_TERMS+1)]
+        tms = yield self.get_term_clients(urls[:-1])
+        pids = yield self.get_pids(tms)
+
+        # MAX_TERMS+1 should fail
+        #tm = yield self.get_term_client(urls[-1])    # FIXME:
 
 class SingleTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_single_process(self):
         tms = yield self.get_term_clients(["/single", "/single"])
-        pids = yield [tm.get_pid() for tm in tms]
+        pids = yield self.get_pids(tms)
         self.assertEqual(pids[0], pids[1])
 
 class UniqueTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_unique_processes(self):
         tms = yield self.get_term_clients(["/unique", "/unique"])
-        pids = yield [tm.get_pid() for tm in tms]
+        pids = yield self.get_pids(tms)
         self.assertNotEqual(pids[0], pids[1])
+
+    @tornado.testing.gen_test
+    def test_max_terminals(self):
+        tms = yield self.get_term_clients(['/unique'] * MAX_TERMS)
+        pids = yield [tm.get_pid() for tm in tms]
+        self.assertEqual(len(set(pids)), MAX_TERMS)        # All PIDs the same
+
+        # MAX_TERMS+1 should fail
+        #tm = yield self.get_term_client('/unique')   # FIXME:
 
 if __name__ == '__main__':
     unittest.main()
