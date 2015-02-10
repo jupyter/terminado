@@ -161,16 +161,6 @@ class CommonTests(TermTestCase):
             tm.close()
 
 class NamedTermTests(TermTestCase):
-    @tornado.testing.gen_test
-    def test_no_name(self):
-        with self.assertRaises(HTTPError) as context:
-            tm = yield self.get_term_client('/named/')
-            yield tm.read_msg()
-
-        # Not found
-        self.assertEqual(context.exception.code, 404)
-        self.assertEqual(context.exception.response.code, 404)
-
     def test_new(self):
         response = self.fetch("/new", follow_redirects=False)
         self.assertEqual(response.code, 302)
