@@ -23,7 +23,7 @@ import os
 DONE_TIMEOUT = 0.5
 os.environ['ASYNC_TEST_TIMEOUT'] = "20"     # Global test case timeout
 
-MAX_TERMS = 5                               # Testing thresholds
+MAX_TERMS = 3                               # Testing thresholds
 
 class TestTermClient(object):
     """Test connection to a terminal manager"""
