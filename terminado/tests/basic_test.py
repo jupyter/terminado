@@ -152,7 +152,7 @@ class CommonTests(TermTestCase):
     @tornado.testing.gen_test
     def test_basic_command(self):
         for url in self.test_urls:
-            tm = yield self.get_term_client('/named/foo')
+            tm = yield self.get_term_client(url)
             yield tm.read_all_msg()
             tm.write_stdin("whoami\r")
             (stdout, other) = yield tm.read_stdout()
