@@ -114,12 +114,16 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
         raise tornado.gen.Return(pids)
 
     def get_app(self):
-        named_tm = NamedTermManager(shell_command=['bash'], max_terminals=MAX_TERMS,
-                                        ioloop=self.io_loop)
-        single_tm = SingleTermManager(shell_command=['bash'], ioloop=self.io_loop)
-        unique_tm = UniqueTermManager(shell_command=['bash'], max_terminals=MAX_TERMS,
-                                        ioloop=self.io_loop)
+        self.named_tm = NamedTermManager(shell_command=['bash'], 
+                                            max_terminals=MAX_TERMS,
+                                            ioloop=self.io_loop)
+        self.single_tm = SingleTermManager(shell_command=['bash'], 
+                                            ioloop=self.io_loop)
+        self.unique_tm = UniqueTermManager(shell_command=['bash'], 
+                                            max_terminals=MAX_TERMS,
+                                            ioloop=self.io_loop)
         
+        named_tm = self.named_tm
         class NewTerminalHandler(tornado.web.RequestHandler):
             """Create a new named terminal, return redirect"""
             def get(self):
@@ -128,9 +132,9 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
         return tornado.web.Application([
                     (r"/new",         NewTerminalHandler),
-                    (r"/named/(\w+)", TermSocket, {'term_manager': named_tm}),
-                    (r"/single",      TermSocket, {'term_manager': single_tm}),
-                    (r"/unique",      TermSocket, {'term_manager': unique_tm})
+                    (r"/named/(\w+)", TermSocket, {'term_manager': self.named_tm}),
+                    (r"/single",      TermSocket, {'term_manager': self.single_tm}),
+                    (r"/unique",      TermSocket, {'term_manager': self.unique_tm})
                 ], debug=True)
 
     test_urls = ('/named/term1', '/unique', '/single')
@@ -166,10 +170,9 @@ class NamedTermTests(TermTestCase):
         self.assertEqual(response.code, 302)
         url = response.headers["Location"]
 
-        # Check that the given terminal name works
-        tm = self.get_term_client(url)
-        tm.add_done_callback(self.stop)
-        self.wait()
+        # Check that the new terminal was created
+        name = url.split('/')[2]
+        self.assertIn(name, self.named_tm.terminals)
 
     @tornado.testing.gen_test
     def test_namespace(self):
