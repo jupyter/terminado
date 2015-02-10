@@ -20,7 +20,7 @@ import os
 # The timeout we use to assume no more messages are coming
 # from the sever.
 #
-DONE_TIMEOUT = 0.5
+DONE_TIMEOUT = 1.0
 os.environ['ASYNC_TEST_TIMEOUT'] = "20"     # Global test case timeout
 
 MAX_TERMS = 3                               # Testing thresholds
