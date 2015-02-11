@@ -225,7 +225,7 @@ class SingleTermManager(TermManagerBase):
         yield super(SingleTermManager, self).kill_all()
         self.terminal = None
 
-def MaxTerminalsReached(Exception):
+class MaxTerminalsReached(Exception):
     def __init__(self, max_terminals):
         self.max_terminals = max_terminals
     
