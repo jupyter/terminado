@@ -32,7 +32,7 @@ class TestTermClient(object):
         self.pending_read = None
 
     @tornado.gen.coroutine
-    def read_msg(self):
+    def _read_msg(self):
 
         # Because the Tornado Websocket client has no way to cancel
         # a pending read, we have to keep track of them...
@@ -41,7 +41,12 @@ class TestTermClient(object):
 
         response = yield self.pending_read
         self.pending_read = None
-        raise tornado.gen.Return(json.loads(response))
+        raise tornado.gen.Return(response)
+
+    @tornado.gen.coroutine
+    def read_msg(self):
+        msg = yield self._read_msg()
+        raise tornado.gen.Return(json.loads(msg))
 
     @tornado.gen.coroutine
     def read_all_msg(self, timeout=DONE_TIMEOUT):
@@ -187,11 +192,13 @@ class NamedTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_max_terminals(self):
         urls = ["/named/%d" % i for i in range(MAX_TERMS+1)]
-        tms = yield self.get_term_clients(urls[:-1])
+        tms = yield self.get_term_clients(urls[:MAX_TERMS])
         pids = yield self.get_pids(tms)
 
         # MAX_TERMS+1 should fail
-        #tm = yield self.get_term_client(urls[-1])    # FIXME:
+        tm = yield self.get_term_client(urls[MAX_TERMS])
+        msg = yield tm._read_msg()
+        self.assertEqual(msg, None)             # Connection closed
 
 class SingleTermTests(TermTestCase):
     @tornado.testing.gen_test

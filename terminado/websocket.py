@@ -52,6 +52,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
+        self.terminal = None
 
         self._log = logging.getLogger(__name__)
 
@@ -130,8 +131,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         disconnecting.
         """
         self._log.info("Websocket closed")
-        self.terminal.clients.remove(self)
-        self.terminal.resize_to_smallest()
+        if self.terminal:
+            self.terminal.clients.remove(self)
+            self.terminal.resize_to_smallest()
         self.term_manager.client_disconnected(self)
 
     def on_pty_died(self):
