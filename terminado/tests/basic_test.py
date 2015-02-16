@@ -213,21 +213,6 @@ class NamedTermTests(TermTestCase):
         pids = yield self.get_pids(tms)
         yield self.check_maxterm(tms[0], urls[MAX_TERMS], "/named/onemore")
 
-        # MAX_TERMS+1 should fail
-#        tm = yield self.get_term_client(urls[MAX_TERMS])
-#        msg = yield tm._read_msg()
-#        self.assertEqual(msg, None)             # Connection closed
-
-        # Close one
-#        tms[0].close()
-#        msg = yield tms[0]._read_msg()
-#        self.assertEquals(msg, None)
-
-        # Try to open up to MAX_TERMS, should succeed
-#        tm = yield self.get_term_client("/named/onemore")
-#        msg = yield tm.read_msg()
-#        self.assertEquals(msg[0], 'setup')
-
 class SingleTermTests(TermTestCase):
     @tornado.testing.gen_test
     def test_single_process(self):
@@ -249,21 +234,6 @@ class UniqueTermTests(TermTestCase):
         self.assertEqual(len(set(pids)), MAX_TERMS)        # All PIDs the same
 
         yield self.check_maxterm(tms[0], "/unique", "/unique")
-
-#        # MAX_TERMS+1 should fail
-#        tm = yield self.get_term_client('/unique')
-#        msg = yield tm._read_msg()
-#        self.assertEquals(msg, None)            # Connection closed
-
-        # Close one
-#        tms[0].close()
-#        msg = yield tms[0]._read_msg()
-#        self.assertEquals(msg, None)
-
-        # Try to open up to MAX_TERMS, should succeed
-#        tm = yield self.get_term_client('/unique')
-#        msg = yield tm._read_msg()
-#        self.assertNotEquals(msg, None)
 
 if __name__ == '__main__':
     unittest.main()
