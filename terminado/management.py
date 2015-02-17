@@ -252,6 +252,9 @@ class UniqueTermManager(TermManagerBase):
         self.max_terminals = max_terminals
 
     def get_terminal(self, url_component=None):
+        if self.max_terminals and len(self.ptys_by_fd) >= self.max_terminals:
+            raise MaxTerminalsReached(self.max_terminals)
+
         term = self.new_terminal()
         self.start_reading(term)
         return term
@@ -259,8 +262,9 @@ class UniqueTermManager(TermManagerBase):
     def client_disconnected(self, websocket):
         """Send terminal SIGHUP when client disconnects."""
         self.log.info("Websocket closed, sending SIGHUP to terminal.")
-        websocket.terminal.kill(signal.SIGHUP)
-    
+        if websocket.terminal:
+            websocket.terminal.kill(signal.SIGHUP)
+
 
 class NamedTermManager(TermManagerBase):
     """Share terminals between websockets connected to the same endpoint.
