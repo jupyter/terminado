@@ -232,6 +232,23 @@ class MaxTerminalsReached(Exception):
     def __str__(self):
         return "Cannot create more than %d terminals" % self.max_terminals
 
+class UniqueTermManager(TermManagerBase):
+    """Give each websocket a unique terminal to use."""
+    def __init__(self, max_terminals=None, **kwargs):
+        super(UniqueTermManager, self).__init__(**kwargs)
+        self.max_terminals = max_terminals
+
+    def get_terminal(self, url_component=None):
+        term = self.new_terminal()
+        self.start_reading(term)
+        return term
+
+    def client_disconnected(self, websocket):
+        """Send terminal SIGHUP when client disconnects."""
+        self.log.info("Websocket closed, sending SIGHUP to terminal.")
+        websocket.terminal.kill(signal.SIGHUP)
+    
+
 class NamedTermManager(TermManagerBase):
     """Share terminals between websockets connected to the same endpoint.
     """
@@ -293,17 +310,3 @@ class NamedTermManager(TermManagerBase):
     def kill_all(self):
         yield super(NamedTermManager, self).kill_all()
         self.terminals = {}
-
-class UniqueTermManager(NamedTermManager):
-    """Give each websocket a unique terminal to use."""
-
-    def get_terminal(self, url_component=None):
-        next_name = self._next_available_name()
-        return super(UniqueTermManager, self).get_terminal(next_name)
-
-    def client_disconnected(self, websocket):
-        """Send terminal SIGHUP when client disconnects."""
-        self.log.info("Websocket closed, sending SIGHUP to terminal.")
-        if websocket.terminal:
-            websocket.terminal.kill(signal.SIGHUP)
-
