@@ -115,26 +115,6 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
         raise tornado.gen.Return(pids)
 
-
-    @tornado.gen.coroutine
-    def check_maxterm(self, tm_toclose, fail_url, onemore_url):
-
-        # MAX_TERMS+1 should fail
-        tm = yield self.get_term_client(fail_url)
-        msg = yield tm.read_msg()
-        self.assertEqual(msg, None)             # Connection closed
-
-        # Close one
-        tm_toclose.close()
-        msg = yield tm_toclose.read_msg()       # Closed
-        self.assertEquals(msg, None)
-
-        # Try to open back up to MAX_TERMS, should succeed
-        # FIXME:  need to figure out if this is a bug
-        #tm = yield self.get_term_client(onemore_url)
-        #msg = yield tm.read_msg()
-        #self.assertEquals(msg[0], 'setup')
-
     def get_app(self):
         self.named_tm = NamedTermManager(shell_command=['bash'], 
                                             max_terminals=MAX_TERMS,
@@ -211,7 +191,11 @@ class NamedTermTests(TermTestCase):
         urls = ["/named/%d" % i for i in range(MAX_TERMS+1)]
         tms = yield self.get_term_clients(urls[:MAX_TERMS])
         pids = yield self.get_pids(tms)
-        yield self.check_maxterm(tms[0], urls[MAX_TERMS], "/named/onemore")
+
+        # MAX_TERMS+1 should fail
+        tm = yield self.get_term_client(urls[MAX_TERMS])
+        msg = yield tm.read_msg()
+        self.assertEqual(msg, None)             # Connection closed
 
 class SingleTermTests(TermTestCase):
     @tornado.testing.gen_test
@@ -231,9 +215,22 @@ class UniqueTermTests(TermTestCase):
     def test_max_terminals(self):
         tms = yield self.get_term_clients(['/unique'] * MAX_TERMS)
         pids = yield self.get_pids(tms)
-        self.assertEqual(len(set(pids)), MAX_TERMS)        # All PIDs the same
+        self.assertEqual(len(set(pids)), MAX_TERMS)        # All PIDs unique
 
-        yield self.check_maxterm(tms[0], "/unique", "/unique")
+        # MAX_TERMS+1 should fail
+        tm = yield self.get_term_client("/unique")
+        msg = yield tm.read_msg()
+        self.assertEqual(msg, None)             # Connection closed
+
+        # Close one
+        tms[0].close()
+        msg = yield tms[0].read_msg()           # Closed
+        self.assertEquals(msg, None)
+
+        # Should be able to open back up to MAX_TERMS
+        tm = yield self.get_term_client("/unique")
+        msg = yield tm.read_msg()
+        self.assertEquals(msg[0], 'setup')        
 
 if __name__ == '__main__':
     unittest.main()
