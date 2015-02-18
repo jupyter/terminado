@@ -27,7 +27,7 @@ def main(argv):
                       template_path=TEMPLATE_DIR,
                       ui_modules = {'Terminal': uimodule.Terminal},
                       xstatic_url = tornado_xstatic.url_maker('/xstatic/'))
-    app.listen(8765)
+    app.listen(8765, 'localhost')
     run_and_show_browser("http://localhost:8765/", term_manager)
 
 if __name__ == '__main__':

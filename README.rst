@@ -52,7 +52,10 @@ Usage example:
                    ]
         app = tornado.web.Application(handlers, static_path=STATIC_DIR,
                           xstatic_url = tornado_xstatic.url_maker('/xstatic/'))
-        app.listen(8765)  # Serve at http://localhost:8765/
+        # Serve at http://localhost:8765/ N.B. Leaving out 'localhost' here will
+        # work, but it will listen on the public network interface as well.
+        # Given what terminado does, that would be rather a security hole.
+        app.listen(8765, 'localhost')
         try:
             tornado.ioloop.IOLoop.instance().start()
         finally:

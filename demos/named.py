@@ -45,7 +45,7 @@ def main():
                               xstatic_url=tornado_xstatic.url_maker('/xstatic/'),
                               term_manager=term_manager)
 
-    application.listen(8700)
+    application.listen(8700, 'localhost')
     run_and_show_browser("http://localhost:8700/new", term_manager)
 
 if __name__ == "__main__":
