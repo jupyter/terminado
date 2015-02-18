@@ -105,13 +105,23 @@ class PtyWithClients(object):
             else:
                 raise gen.Return(False)
 
+def _update_removing(target, changes):
+    """Like dict.update(), but remove keys where the value is None.
+    """
+    for k, v in changes.items():
+        if v is None:
+            target.pop(k, None)
+        else:
+            target[k] = v
+
 class TermManagerBase(object):
     """Base class for a terminal manager."""
     def __init__(self, shell_command, server_url="", term_settings={},
-                 ioloop=None):
+                 extra_env=None, ioloop=None):
         self.shell_command = shell_command
         self.server_url = server_url
         self.term_settings = term_settings
+        self.extra_env = extra_env
         self.log = logging.getLogger(__name__)
 
         self.ptys_by_fd = {}
@@ -135,6 +145,9 @@ class TermManagerBase(object):
 
         if self.server_url:
             env[ENV_PREFIX+"URL"] = self.server_url
+
+        if self.extra_env:
+            _update_removing(env, self.extra_env)
 
         return env
 
