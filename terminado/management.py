@@ -175,10 +175,9 @@ class TermManagerBase(object):
         self.log.info("EOF on FD %d; stopping reading", fd)
         del self.ptys_by_fd[fd]
         self.ioloop.remove_handler(fd)
-        os.close(fd)
-        
-        # This should reap the child process
-        ptywclients.ptyproc.isalive()
+
+        # This closes the fd, and should result in the process being reaped.
+        ptywclients.ptyproc.close()
 
     def pty_read(self, fd, events=None):
         """Called by the event loop when there is pty data ready to read."""
