@@ -87,7 +87,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         Call our terminal manager to get a terminal, and connect to it as a
         client.
         """
-        if not self.check_origin():
+        if not self.check_origin(self.request.headers.get("Origin")):
             # this will never be True tornado >= 4,
             # which calls check_origin prior open
             raise tornado.web.HTTPError(404, "Websocket origin mismatch")
