@@ -56,30 +56,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         self._logger = logging.getLogger(__name__)
 
-    def check_origin(self, origin=None):
-        """Reject connections from other origin pages.
-        
-        This is superfluous with Tornado >= 4, as the same check was added to
-        Tornado itself. For now, we keep this around for older versions of
-        Tornado.
-        """
-        if "Origin" in self.request.headers:
-            origin = self.request.headers.get("Origin")
-        else:
-            origin = self.request.headers.get("Sec-Websocket-Origin", None)
-
-        if not origin:
-            return False
-
-        host = self.request.headers.get("Host").lower()
-        ws_host = urlparse(origin).netloc.lower()
-        if host == ws_host:
-            return True
-        else:
-            self._logger.error("pyxterm.origin_check: ERROR %s != %s", host, ws_host)
-            return False
-    
-    origin_check = check_origin # backward-compat
+    def origin_check(self, origin=None):
+        """Deprecated: backward-compat for terminado <= 0.5."""
+        return self.check_origin(origin or self.request.headers.get('Origin'))
 
     def open(self, url_component=None):
         """Websocket connection opened.
@@ -87,10 +66,6 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         Call our terminal manager to get a terminal, and connect to it as a
         client.
         """
-        if not self.check_origin():
-            # this will never be True tornado >= 4,
-            # which calls check_origin prior open
-            raise tornado.web.HTTPError(404, "Websocket origin mismatch")
 
         self._logger.info("TermSocket.open: %s", url_component)
 
