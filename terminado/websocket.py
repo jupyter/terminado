@@ -48,13 +48,40 @@ def _cast_unicode(s):
 
 class TermSocket(tornado.websocket.WebSocketHandler):
     """Handler for a terminal websocket"""
-    def initialize(self, term_manager):
+    def initialize(self, term_manager, keep_alive_time=5):
+        """
+        keep_alive_time - if there is no activity for x seconds specified in keep_alive_time,
+                          a websocket ping message will be sent. Default is 5. Set it to 0 to
+                          disable sending the ping message. This feature is used to keep proxies 
+                          such as nginx from automatically closing the connection when there is 
+                          no activity.
+        """
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
         self.terminal = None
 
         self._logger = logging.getLogger(__name__)
+
+        self.keep_alive_time = 5 #send a ping if there is no activity for more than this many of seconds
+        self.last_activity_time = keep_alive_time 
+    
+    def __timer(self):
+        if self.ws_connection is not None:
+            io_loop = self.ws_connection.stream.io_loop
+            t = io_loop.time()
+            if t - self.last_activity_time > self.keep_alive_time:
+                self.ping(b"ping")
+                self.last_activity_time = t
+            io_loop.add_timeout(1, self.__timer) 
+                
+    def __update_last_activity_time(self):
+        if self.ws_connection is not None:
+            io_loop = self.ws_connection.stream.io_loop
+            t = io_loop.time()
+            self.last_activity_time = t
+        
+        
 
     def origin_check(self, origin=None):
         """Deprecated: backward-compat for terminado <= 0.5."""
@@ -77,15 +104,25 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal.clients.append(self)
 
         self.send_json_message(["setup", {}])
+        
+        self.__update_last_activity_time()
+        io_loop = self.ws_connection.stream.io_loop
+        if self.keep_alive_time>0:
+            io_loop.add_timeout(0.2*self.keep_alive_time, self.__timer)        
         self._logger.info("TermSocket.open: Opened %s", self.term_name)
+        
+        
+        
 
     def on_pty_read(self, text):
         """Data read from pty; send to frontend"""
         self.send_json_message(['stdout', text])
+        
 
     def send_json_message(self, content):
         json_msg = json.dumps(content)
         self.write_message(json_msg)
+        self.__update_last_activity_time()
 
     def on_message(self, message):
         """Handle incoming websocket message
@@ -94,6 +131,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         what kind of message this is. Data associated with the message follows.
         """
         ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
+        self.__update_last_activity_time()
         command = json.loads(message)
         msg_type = command[0]    
 
