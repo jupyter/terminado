@@ -66,6 +66,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         Call our terminal manager to get a terminal, and connect to it as a
         client.
         """
+        # Jupyter has a mixin to ping websockets and keep connections through
+        # proxies alive. Call super() to allow that to set up:
+        super(TermSocket, self).open(url_component)
 
         self._logger.info("TermSocket.open: %s", url_component)
 
