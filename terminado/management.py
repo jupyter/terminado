@@ -168,8 +168,7 @@ class TermManagerBase(object):
         self.ioloop.add_handler(fd, self.pty_read, self.ioloop.READ)
 
     def on_eof(self, ptywclients):
-        """Called when the pty has closed.
-        """
+        """Called when the pty has closed."""
         # Stop trying to read from that terminal
         fd = ptywclients.ptyproc.fd
         self.log.info("EOF on FD %d; stopping reading", fd)
@@ -179,6 +178,13 @@ class TermManagerBase(object):
         # This closes the fd, and should result in the process being reaped.
         ptywclients.ptyproc.close()
 
+    def on_oserror(self, ptywclients):
+        """Called when there is a EBADF (errno=9) from stopping."""
+        fd = ptywclients.ptyproc.fd
+        self.log.info("EOF on FD %d; stopping reading", fd)
+        del self.ptys_by_fd[fd]
+        self.ioloop.remove_handler(fd)
+        
     def pty_read(self, fd, events=None):
         """Called by the event loop when there is pty data ready to read."""
         ptywclients = self.ptys_by_fd[fd]
@@ -191,6 +197,8 @@ class TermManagerBase(object):
             self.on_eof(ptywclients)
             for client in ptywclients.clients:
                 client.on_pty_died()
+        except OSError:
+            self.on_oserror(ptywclients)
 
     def get_terminal(self, url_component=None):
         """Override in a subclass to give a terminal to a new websocket connection
@@ -209,7 +217,7 @@ class TermManagerBase(object):
     @gen.coroutine
     def shutdown(self):
         yield self.kill_all()
-
+        
     @gen.coroutine
     def kill_all(self):
         futures = []
@@ -321,7 +329,13 @@ class NamedTermManager(TermManagerBase):
         name = ptywclients.term_name
         self.log.info("Terminal %s closed", name)
         self.terminals.pop(name, None)
-    
+
+    def on_oserror(self, ptywclients):
+        super(NamedTermManager, self).on_oserror(ptywclients)
+        name = ptywclients.term_name
+        self.log.info("Terminal %s closed", name)
+        self.terminals.pop(name, None)
+
     @gen.coroutine
     def kill_all(self):
         yield super(NamedTermManager, self).kill_all()
