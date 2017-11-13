@@ -70,22 +70,12 @@ class PtyWithClients(object):
         if not self.ptyproc.isalive():
             raise gen.Return(True)
         try:
-            self.kill(signal.SIGHUP)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
-            self.kill(signal.SIGCONT)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
-            self.kill(signal.SIGINT)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
-            self.kill(signal.SIGTERM)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
+            for sig in [signal.SIGHUP, signal.SIGCONT, signal.SIGINT,
+                        signal.SIGTERM]:
+                self.kill(sig)
+                yield sleep()
+                if not self.ptyproc.isalive():
+                    raise gen.Return(True)
             if force:
                 self.kill(signal.SIGKILL)
                 yield sleep()
