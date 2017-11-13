@@ -309,8 +309,8 @@ class NamedTermManager(TermManagerBase):
 
     def kill(self, name, sig=signal.SIGTERM):
         term = self.terminals[name]
-        term.kill()   # This should lead to an EOF
-    
+        term.kill(sig)   # This should lead to an EOF
+
     @gen.coroutine
     def terminate(self, name, force=False):
         term = self.terminals[name]
