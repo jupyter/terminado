@@ -7,7 +7,8 @@ Contents:
    :maxdepth: 2
 
    websocket
-   uimodule.rst
+   uimodule
+   releasenotes
 
 .. include:: ../README.rst
 
