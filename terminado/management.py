@@ -55,7 +55,13 @@ class PtyWithClients(object):
             self.ptyproc.setwinsize(minrows, mincols)
 
     def kill(self, sig=signal.SIGTERM):
+        """Send a signal to the process in the pty"""
         self.ptyproc.kill(sig)
+
+    def killpg(self, sig=signal.SIGTERM):
+        """Send a signal to the process group of the process in the pty"""
+        pgid = os.getpgid(self.ptyproc.pid)
+        os.killpg(pgid, sig)
     
     @gen.coroutine
     def terminate(self, force=False):
@@ -262,7 +268,7 @@ class UniqueTermManager(TermManagerBase):
         """Send terminal SIGHUP when client disconnects."""
         self.log.info("Websocket closed, sending SIGHUP to terminal.")
         if websocket.terminal:
-            websocket.terminal.kill(signal.SIGHUP)
+            websocket.terminal.killpg(signal.SIGHUP)
 
 
 class NamedTermManager(TermManagerBase):
