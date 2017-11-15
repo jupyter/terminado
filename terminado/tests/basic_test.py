@@ -160,7 +160,7 @@ class CommonTests(TermTestCase):
         for url in self.test_urls:
             tm = yield self.get_term_client(url)
             yield tm.read_all_msg()
-            tm.write_stdin("whoami\r")
+            tm.write_stdin("whoami\n")
             (stdout, other) = yield tm.read_stdout()
             self.assertEqual(stdout[:6], "whoami")
             self.assertEqual(other, [])
@@ -230,7 +230,7 @@ class UniqueTermTests(TermTestCase):
         # Should be able to open back up to MAX_TERMS
         tm = yield self.get_term_client("/unique")
         msg = yield tm.read_msg()
-        self.assertEquals(msg[0], 'setup')        
+        self.assertEquals(msg[0], 'setup')
 
 if __name__ == '__main__':
     unittest.main()
