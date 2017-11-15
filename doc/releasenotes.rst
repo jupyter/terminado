@@ -12,4 +12,5 @@ Release notes
   group, not just the main process.
 - Fixed :meth:`terminado.NamedTermManager.kill` to use the signal number passed
   to it.
+- Switched to Flit packaging.
 - README and requirements for demos.

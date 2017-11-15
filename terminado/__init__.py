@@ -1,3 +1,4 @@
+"""Terminals served to xterm.js using Tornado websockets"""
 from .websocket import TermSocket
 from .management import (TermManagerBase, SingleTermManager,
                          UniqueTermManager, NamedTermManager)
