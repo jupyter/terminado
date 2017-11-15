@@ -76,22 +76,12 @@ class PtyWithClients(object):
         if not self.ptyproc.isalive():
             raise gen.Return(True)
         try:
-            self.kill(signal.SIGHUP)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
-            self.kill(signal.SIGCONT)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
-            self.kill(signal.SIGINT)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
-            self.kill(signal.SIGTERM)
-            yield sleep()
-            if not self.ptyproc.isalive():
-                raise gen.Return(True)
+            for sig in [signal.SIGHUP, signal.SIGCONT, signal.SIGINT,
+                        signal.SIGTERM]:
+                self.kill(sig)
+                yield sleep()
+                if not self.ptyproc.isalive():
+                    raise gen.Return(True)
             if force:
                 self.kill(signal.SIGKILL)
                 yield sleep()
@@ -315,8 +305,8 @@ class NamedTermManager(TermManagerBase):
 
     def kill(self, name, sig=signal.SIGTERM):
         term = self.terminals[name]
-        term.kill()   # This should lead to an EOF
-    
+        term.kill(sig)   # This should lead to an EOF
+
     @gen.coroutine
     def terminate(self, name, force=False):
         term = self.terminals[name]
