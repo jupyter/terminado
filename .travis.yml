@@ -9,7 +9,7 @@ python:
 install: pip install .
 
 # command to run tests
-script: nosetests
+script: py.test
 
 # Enable new Travis stack, should speed up builds
 sudo: false
