@@ -162,7 +162,7 @@ class CommonTests(TermTestCase):
             yield tm.read_all_msg()
             tm.write_stdin("whoami\n")
             (stdout, other) = yield tm.read_stdout()
-            assert stdout.startswith('whoami')
+            assert stdout.startswith('who')
             assert other == []
             tm.close()
 
