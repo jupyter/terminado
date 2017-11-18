@@ -19,7 +19,11 @@ import logging
 import os
 import signal
 
-from ptyprocess import PtyProcessUnicode
+try:
+    from ptyprocess import PtyProcessUnicode
+except ImportError:
+    from winpty import PtyProcess as PtyProcessUnicode
+
 from tornado import gen
 from tornado.ioloop import IOLoop
 
@@ -64,6 +68,8 @@ class PtyWithClients(object):
 
     def killpg(self, sig=signal.SIGTERM):
         """Send a signal to the process group of the process in the pty"""
+        if os.name == 'nt':
+            return self.ptyproc.kill(sig)
         pgid = os.getpgid(self.ptyproc.pid)
         os.killpg(pgid, sig)
     
@@ -73,15 +79,19 @@ class PtyWithClients(object):
         SIGHUP and SIGINT. If "force" is True then moves onto SIGKILL. This
         returns True if the child was terminated. This returns False if the
         child could not be terminated. '''
-        
+        if os.name == 'nt':
+            signals = [signal.SIGINT, signal.SIGTERM]
+        else:
+            signals = [signal.SIGHUP, signal.SIGCONT, signal.SIGINT,
+                       signal.SIGTERM]
+
         loop = IOLoop.current()
         sleep = lambda : gen.Task(loop.add_timeout, loop.time() + self.ptyproc.delayafterterminate)
 
         if not self.ptyproc.isalive():
             raise gen.Return(True)
         try:
-            for sig in [signal.SIGHUP, signal.SIGCONT, signal.SIGINT,
-                        signal.SIGTERM]:
+            for sig in signals:
                 self.kill(sig)
                 yield sleep()
                 if not self.ptyproc.isalive():
@@ -262,6 +272,12 @@ class UniqueTermManager(TermManagerBase):
         """Send terminal SIGHUP when client disconnects."""
         self.log.info("Websocket closed, sending SIGHUP to terminal.")
         if websocket.terminal:
+            if os.name == 'nt':
+                websocket.terminal.kill()
+                # Immediately call the pty reader to process
+                # the eof and free up space
+                self.pty_read(websocket.terminal.ptyproc.fd)
+                return
             websocket.terminal.killpg(signal.SIGHUP)
 
 

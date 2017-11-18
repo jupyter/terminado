@@ -9,7 +9,8 @@ author-email = "thomas@kluyver.me.uk"
 home-page = "https://github.com/takluyver/terminado"
 description-file = "README.rst"
 requires = [
-    "ptyprocess",
+    "ptyprocess;os_name!='nt'",
+    "pywinpty (>=0.4);os_name=='nt' and python_version>='3.5'",
     "tornado (>=4)",
 ]
 classifiers=[

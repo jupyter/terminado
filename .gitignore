@@ -5,6 +5,7 @@
 *.sav
 *.old
 *.pem
+.cache/
 README.html
 build/*
 dist/*
