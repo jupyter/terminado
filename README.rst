@@ -1,5 +1,5 @@
 This is a `Tornado <http://tornadoweb.org/>`_ websocket backend for the
-`term.js <https://github.com/chjj/term.js>`_ Javascript terminal emulator
+`Xterm.js <https://xtermjs.org/>`_ Javascript terminal emulator
 library.
 
 It evolved out of `pyxterm <https://github.com/mitotic/pyxterm>`_, which was

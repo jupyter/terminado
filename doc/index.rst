@@ -10,6 +10,11 @@ Contents:
    uimodule
    releasenotes
 
+.. seealso::
+
+   `Connecting Xterm.js to Terminado <https://xtermjs.org/docs/guides/terminado/>`_
+     From the Xterm.js docs
+
 .. include:: ../README.rst
 
 
