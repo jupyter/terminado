@@ -1,3 +1,7 @@
+// Copyright (c) Jupyter Development Team
+// Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
+// Distributed under the terms of the Simplified BSD License.
+
 function make_terminal(element, size, ws_url) {
     var ws = new WebSocket(ws_url);
     var term = new Terminal({
