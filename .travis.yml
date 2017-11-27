@@ -10,7 +10,10 @@ install:
  - pip install tornado ptyprocess
 
 # command to run tests
-script: py.test
+script: 
+  - py.test
+  - pip install flit
+  - flit install --symlink
 
 # Enable new Travis stack, should speed up builds
 sudo: false

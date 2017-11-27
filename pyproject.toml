@@ -4,8 +4,8 @@ build-backend = "flit.buildapi"
 
 [tool.flit.metadata]
 module = "terminado"
-author= 'Jupyter Development Team',
-author_email = 'jupyter@googlegroups.com',
+author = "Jupyter Development Team"
+author-email = "jupyter@googlegroups.com"
 home-page = "https://github.com/jupyter/terminado"
 description-file = "README.rst"
 requires = [
