@@ -7,12 +7,10 @@ python:
 
 # Install dependencies
 install:
- - pip install tornado ptyprocess flit
+ - pip install tornado ptyprocess
 
 # command to run tests
-script: 
-  - py.test
-  - flit install --symlink
+script: py.test
 
 # Enable new Travis stack, should speed up builds
 sudo: false

@@ -23,6 +23,7 @@ install:
   # Install dependencies
   # update path to use installed pip and py.test
   - set PATH=%PYTHON%\\scripts;%PATH%
-  - 'pip install tornado pywinpty pytest'
+  - 'pip install tornado pywinpty pytest flit'
 test_script:
   - 'py.test'
+  - 'flit install'
