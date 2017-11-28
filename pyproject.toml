@@ -10,7 +10,7 @@ home-page = "https://github.com/jupyter/terminado"
 description-file = "README.rst"
 requires = [
     "ptyprocess;os_name!='nt'",
-    "pywinpty (>=0.4.1);os_name=='nt' and python_version>='3.5'",
+    "pywinpty (>=0.5);os_name=='nt'",
     "tornado (>=4)",
 ]
 classifiers=[

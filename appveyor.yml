@@ -4,6 +4,7 @@ skip_branch_with_pr: true
 # environment variables
 environment:
   matrix:
+    - PYTHON: "C:\\Python27-x64"
     - PYTHON: "C:\\Python35-x64"
     - PYTHON: "C:\\Python36-x64"
 
@@ -23,7 +24,6 @@ install:
   # Install dependencies
   # update path to use installed pip and py.test
   - set PATH=%PYTHON%\\scripts;%PATH%
-  - 'pip install tornado pywinpty pytest flit'
+  - 'pip install tornado pywinpty pytest'
 test_script:
   - 'py.test'
-  - 'flit install'
