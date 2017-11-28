@@ -16,13 +16,13 @@ function make_terminal(element, size, ws_url) {
         term.on('data', function(data) {
             ws.send(JSON.stringify(['stdin', data]));
         });
-        
+
         term.on('title', function(title) {
             document.title = title;
         });
-        
+
         term.open(element);
-        
+
         ws.onmessage = function(event) {
             json_msg = JSON.parse(event.data);
             switch(json_msg[0]) {
