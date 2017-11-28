@@ -14,7 +14,6 @@ function make_terminal(element, size, ws_url) {
         ws.send(JSON.stringify(["set_size", size.rows, size.cols,
                                     window.innerHeight, window.innerWidth]));
         term.on('data', function(data) {
-            console.log('hi', data);
             ws.send(JSON.stringify(['stdin', data]));
         });
 
@@ -28,7 +27,6 @@ function make_terminal(element, size, ws_url) {
             json_msg = JSON.parse(event.data);
             switch(json_msg[0]) {
                 case "stdout":
-                    console.log('ho', json_msg)
                     term.write(json_msg[1]);
                     break;
                 case "disconnect":
