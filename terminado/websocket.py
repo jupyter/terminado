@@ -100,3 +100,4 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         """
         self.send_json_message(['disconnect', 1])
         self.close()
+        self.terminal = None
