@@ -26,4 +26,4 @@ install:
   - set PATH=%PYTHON%\\scripts;%PATH%
   - 'pip install tornado pywinpty pytest'
 test_script:
-  - 'py.test'
+  - 'py.test terminado/tests/basic_test.py::CommonTests::test_basic'
