@@ -86,7 +86,7 @@ class PtyWithClients(object):
                        signal.SIGTERM]
 
         loop = IOLoop.current()
-        sleep = lambda : gen.Task(loop.add_timeout, loop.time() + self.ptyproc.delayafterterminate)
+        sleep = lambda : gen.sleep(self.ptyproc.delayafterterminate)
 
         if not self.ptyproc.isalive():
             raise gen.Return(True)
