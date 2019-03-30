@@ -4,7 +4,7 @@ python:
 
 # Install dependencies
 install:
- - pip install tornado ptyprocess python-interface json msgpack
+ - pip install tornado ptyprocess python-interface msgpack
 
 # command to run tests
 script: py.test

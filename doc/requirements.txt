@@ -1,5 +1,4 @@
 ptyprocess
 tornado
 python-interface
-json
 msgpack
