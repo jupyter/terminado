@@ -1,13 +1,10 @@
 language: python
 python:
-  - "3.6"
-  - "3.5"
-  - "3.4"
-  - "2.7"
+  - "3.7"
 
 # Install dependencies
 install:
- - pip install tornado ptyprocess
+ - pip install tornado ptyprocess python-interface json msgpack
 
 # command to run tests
 script: py.test

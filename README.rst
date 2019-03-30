@@ -16,11 +16,15 @@ Modules:
   a terminal.
 * ``terminado.uimodule``: Provides a ``Terminal`` Tornado `UI Module
   <http://www.tornadoweb.org/en/stable/guide/templates.html#ui-modules>`_.
+* ``terminado.formats``: Provides message format implementations for JSON, LightPayload (a custom message format) and
+  MessagePack
 
 JS:
 
 * ``terminado/_static/terminado.js``: A lightweight wrapper to set up a
   term.js terminal with a websocket.
+* ``terminado_static/terminad-xtermjs.bundle.js``: An addon for Xterm.js enabling support for terminado supporting all
+  message formats.
 
 Usage example:
 

@@ -16,3 +16,5 @@ IGNORE
 ORIG
 SUBMIT
 doc/_build/
+terminado/_static/node_modules
+terminado/_static/package-lock.json
