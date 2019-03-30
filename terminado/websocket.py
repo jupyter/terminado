@@ -12,8 +12,8 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-import json
 import logging
+import importlib
 
 import tornado.web
 import tornado.websocket
@@ -24,12 +24,26 @@ def _cast_unicode(s):
     return s
 
 class TermSocket(tornado.websocket.WebSocketHandler):
+    # map mapping message format identifiers to their implementing classes
+    MESSAGE_FORMATS = {
+        "JSON": "JSONMessageFormat",
+        "LightPayload": "LightPayloadMessageFormat",
+        "MessagePack": "MessagePackMessageFormat"
+    }
+
+    def get_compression_options(self):
+        """Use the WebSocket's permessage-deflate extension."""
+        return {}
+
     """Handler for a terminal websocket"""
-    def initialize(self, term_manager):
+    def initialize(self, term_manager, messageFormat = "JSON"):
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
         self.terminal = None
+        # load the class implementing the message format
+        self.messageFormat = getattr(importlib.import_module("terminado.formats." + messageFormat.lower()), 
+                self.MESSAGE_FORMATS[messageFormat])
 
         self._logger = logging.getLogger(__name__)
 
@@ -56,31 +70,41 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.on_pty_read(s)
         self.terminal.clients.append(self)
 
-        self.send_json_message(["setup", {}])
+        self.send_message("setup", {})
         self._logger.info("TermSocket.open: Opened %s", self.term_name)
+
+    def send_message(self, type, message):
+        """Sends a typed message packed by the current message format implementation."""
+
+        pack = self.messageFormat.pack(type, message)
+
+        # make sure binary packs are send as binary
+        if hasattr(pack, "decode"):
+            self.write_message(pack, binary=True)
+        else:
+            self.write_message(pack)
 
     def on_pty_read(self, text):
         """Data read from pty; send to frontend"""
-        self.send_json_message(['stdout', text])
+        self.send_message("stdout", text)
 
-    def send_json_message(self, content):
-        json_msg = json.dumps(content)
-        self.write_message(json_msg)
-
-    def on_message(self, message):
+    def on_message(self, pack):
         """Handle incoming websocket message
-        
-        We send JSON arrays, where the first element is a string indicating
-        what kind of message this is. Data associated with the message follows.
         """
         ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
-        command = json.loads(message)
-        msg_type = command[0]    
+        message = self.messageFormat.unpack(pack)
+        
+        if message[0] == "switch_format":
+            # load the class implementing the message format
+            self.messageFormat = getattr(importlib.import_module("terminado.formats." + message[1].lower()), 
+                    self.MESSAGE_FORMATS[message[1]])
 
-        if msg_type == "stdin":
-            self.terminal.ptyproc.write(command[1])
-        elif msg_type == "set_size":
-            self.size = command[1:3]
+            for s in self.terminal.read_buffer:
+                self.on_pty_read(s)
+        elif message[0] == "stdin":
+            self.terminal.ptyproc.write(message[1])
+        elif message[0] == "set_size":
+            self.size = message[1:3]            
             self.terminal.resize_to_smallest()
 
     def on_close(self):
@@ -98,6 +122,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     def on_pty_died(self):
         """Terminal closed: tell the frontend, and close the socket.
         """
-        self.send_json_message(['disconnect', 1])
+        self.send_message("disconnect", 1)
+
         self.close()
         self.terminal = None
