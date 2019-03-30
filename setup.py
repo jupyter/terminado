@@ -1,10 +1,9 @@
 import setuptools
 import glob
-from terminado import __version__
 
 setuptools.setup(
     name = "terminado",
-    version = __version__,
+    version = "0.9.2",
     author = "Jupyter Development Team",
     author_email = "jupyter@googlegroups.com",
     description = "A websocket backend for the Xterm.js JavaScript terminal emulator library.",
