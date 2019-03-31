@@ -75,8 +75,6 @@ var formats = {
       disconnect: "D",
       switch_format: "F"
     },
-    // reverse map mapping LightPayload types to terminado types
-    RTYPES: swap(this.TYPES),
 
     /**
      * Packs the given type and data as LightPayload-serialised string.
@@ -117,8 +115,6 @@ var formats = {
       disconnect: 5,
       switch_format: 6
     },
-    // reverse map mapping MessagePack types to terminado types
-    RTYPES: swap(this.TYPES),
 
     /**
      * Packs the given type and data as MessagePack-serialised binary data.
@@ -180,30 +176,41 @@ var formats = {
   }
 };
 
+// reverse map mapping MessagePack types to terminado types
+formats.LightPayload.RTYPES = swap(formats.LightPayload.TYPES);
+// reverse map mapping LightPayload types to terminado types
+formats.MessagePack.RTYPES =  swap(formats.MessagePack.TYPES);
+
 // define the terminado addon
 var terminado = {
   // define the default message format
   DEFAULT_MESSAGE_FORMAT: "JSON",
 
-  apply: function apply(terminalConstructor, messageFormat) {
+  apply: function apply(terminalConstructor, messageFormat, switchMessageFormat) {
     // default to the default message format, if no message format is given
     messageFormat = messageFormat || this.DEFAULT_MESSAGE_FORMAT;
+    // default to switching message format, if not given and message format is not the default message format
+    switchMessageFormat = switchMessageFormat !== undefined ? switchMessageFormat : 
+        (messageFormat != this.DEFAULT_MESSAGE_FORMAT ? true : false);
 
-    // closure cache the message format
+    // closure cache the message format and if to switch the message format
     terminalConstructor.prototype.terminadoAttach = (function(messageFormat) {
       return function (socket, bidirectional, buffered) {
-        return terminado.terminadoAttach(this, socket, bidirectional, buffered, messageFormat);
+        return terminado.terminadoAttach(this, socket, bidirectional, buffered, messageFormat, switchMessageFormat);
       };
-    })(messageFormat);
+    })(messageFormat, switchMessageFormat);
 
     terminalConstructor.prototype.terminadoDetach = function (socket) {
       return terminado.terminadoDetach(this, socket);
     };
   },
 
-  terminadoAttach: function terminadoAttach(term, socket, bidirectional, buffered, messageFormat) {
-    // tell terminado which message format to use from now on
-    socket.send(formats.JSON.pack("switch_format", messageFormat));
+  terminadoAttach: function terminadoAttach(term, socket, bidirectional, buffered, messageFormat, switchMessageFormat) {
+    // check if to switch the message format
+    if (switchMessageFormat) {
+      // tell terminado which message format to use from now on
+      socket.send(formats[this.DEFAULT_MESSAGE_FORMAT].pack("switch_format", messageFormat));
+    }
 
     var addonTerminal = term;
     bidirectional = (typeof bidirectional === 'undefined') ? true : bidirectional;
