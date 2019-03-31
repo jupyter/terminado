@@ -28,6 +28,6 @@
     "terminado/_static/terminado-xtermjs.bundle.js"
   ],
   "scripts": {
-    "install": "cd terminado/_static && ../../node_modules/.bin/browserify -r ./terminado-xtermjs -o ./terminado-xtermjs.bundle.js"
+    "install": "cd terminado/_static && browserify -r ./terminado-xtermjs -o ./terminado-xtermjs.bundle.js"
   }
 }
