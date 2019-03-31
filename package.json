@@ -12,18 +12,22 @@
   "homepage": "https://github.com/jupyter/terminado",
   "bugs": "https://github.com/jupyter/terminado/issues",
   "license": "MIT",
-  "main": "terminado-xterm.js",
+  "browser": "terminado/_static/terminado-xterm.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/jupyter/terminado.git"
-  },
-  "scripts": {
-    "install": "node_modules/.bin/browserify -r ./terminado-xtermjs -o terminado-xtermjs.bundle.js"
   },
   "devDependencies": {
     "browserify": "^16.2.3"
   },
   "dependencies": {
     "messagepack": "^1.1.8"
+  },
+  "files": [
+    "terminado/_static/terminado-xtermjs.js",
+    "terminado/_static/terminado-xtermjs.bundle.js"
+  ],
+  "scripts": {
+    "install": "cd terminado/_static && ../../node_modules/.bin/browserify -r ./terminado-xtermjs -o ./terminado-xtermjs.bundle.js"
   }
 }
