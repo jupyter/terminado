@@ -16,3 +16,5 @@ IGNORE
 ORIG
 SUBMIT
 doc/_build/
+node_modules
+package-lock.json

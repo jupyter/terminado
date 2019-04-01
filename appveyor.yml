@@ -4,9 +4,7 @@ skip_branch_with_pr: true
 # environment variables
 environment:
   matrix:
-    - PYTHON: "C:\\Python27-x64"
-    - PYTHON: "C:\\Python35-x64"
-    - PYTHON: "C:\\Python36-x64"
+    - PYTHON: "C:\\Python37-x64"
 
 build: off
 
@@ -24,6 +22,6 @@ install:
   # Install dependencies
   # update path to use installed pip and py.test
   - set PATH=%PYTHON%\\scripts;%PATH%
-  - 'pip install tornado pywinpty pytest'
+  - 'pip install tornado pywinpty pytest python-interface msgpack'
 test_script:
   - 'py.test terminado/tests/basic_test.py::CommonTests::test_basic'

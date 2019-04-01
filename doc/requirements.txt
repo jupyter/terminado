@@ -1,2 +1,4 @@
 ptyprocess
 tornado
+python-interface
+msgpack

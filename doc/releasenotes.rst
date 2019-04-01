@@ -1,6 +1,15 @@
 Release notes
 =============
 
+0.9
+---
+
+- Added support for message formats. The following message formats are supported: JSON, LightPayload (a custom
+  message format) and MessagePack. The default message format is JSON, which is fully backwards-compatible. The
+  message format can be switched at runtime.
+- Added Xterm.js addon supporting all the message formats supported on the server-side.
+- Added a command "switch_format" for switching the message format on the fly.
+
 0.7
 ---
 

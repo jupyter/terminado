@@ -1,0 +1,33 @@
+{
+  "name": "terminado-xtermjs",
+  "version": "1.0.0",
+  "description": "An addon for Xterm.js enabling terminado to be used as backend.",
+  "keywords": [
+    "xtermjs",
+    "terminado",
+    "json",
+    "lightpayload",
+    "messagepack"
+  ],
+  "homepage": "https://github.com/jupyter/terminado",
+  "bugs": "https://github.com/jupyter/terminado/issues",
+  "license": "MIT",
+  "browser": "terminado/_static/terminado-xterm.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jupyter/terminado.git"
+  },
+  "devDependencies": {
+    "browserify": "^16.2.3"
+  },
+  "dependencies": {
+    "messagepack": "^1.1.8"
+  },
+  "files": [
+    "terminado/_static/terminado-xtermjs.js",
+    "terminado/_static/terminado-xtermjs.bundle.js"
+  ],
+  "scripts": {
+    "install": "cd terminado/_static && browserify -r ./terminado-xtermjs -o ./terminado-xtermjs.bundle.js"
+  }
+}
