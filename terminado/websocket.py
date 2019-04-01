@@ -36,14 +36,14 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         return {}
 
     """Handler for a terminal websocket"""
-    def initialize(self, term_manager, messageFormat = "JSON"):
+    def initialize(self, term_manager, message_format = "JSON"):
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
         self.terminal = None
         # load the class implementing the message format
-        self.messageFormat = getattr(importlib.import_module("terminado.formats." + messageFormat.lower()), 
-                self.MESSAGE_FORMATS[messageFormat])
+        self.message_format = getattr(importlib.import_module("terminado.formats." + message_format.lower()),
+                                      self.MESSAGE_FORMATS[message_format])
 
         self._logger = logging.getLogger(__name__)
 
@@ -73,10 +73,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.send_message("setup", {})
         self._logger.info("TermSocket.open: Opened %s", self.term_name)
 
-    def send_message(self, type, message):
+    def send_message(self, command, message):
         """Sends a typed message packed by the current message format implementation."""
 
-        pack = self.messageFormat.pack(type, message)
+        pack = self.message_format.pack(command, message)
 
         # make sure binary packs are send as binary
         if hasattr(pack, "decode"):
@@ -92,19 +92,19 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         """Handle incoming websocket message
         """
         ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
-        message = self.messageFormat.unpack(pack)
-        
+        message = self.message_format.unpack(pack)
+
         if message[0] == "switch_format":
             # load the class implementing the message format
-            self.messageFormat = getattr(importlib.import_module("terminado.formats." + message[1].lower()), 
-                    self.MESSAGE_FORMATS[message[1]])
+            self.message_format = getattr(importlib.import_module("terminado.formats." + message[1].lower()),
+                                          self.MESSAGE_FORMATS[message[1]])
 
             for s in self.terminal.read_buffer:
                 self.on_pty_read(s)
         elif message[0] == "stdin":
             self.terminal.ptyproc.write(message[1])
         elif message[0] == "set_size":
-            self.size = message[1:3]            
+            self.size = message[1:3]
             self.terminal.resize_to_smallest()
 
     def on_close(self):

@@ -1,3 +1,1 @@
-"""
-Message formats for reading and writing to the WebSocket.
-"""
+"""Message formats for reading and writing to the WebSocket."""
