@@ -1,5 +1,6 @@
 language: python
 python:
+  - "3.7"
   - "3.6"
   - "3.5"
   - "3.4"
@@ -7,10 +8,10 @@ python:
 
 # Install dependencies
 install:
- - pip install tornado ptyprocess
+ - pip install tox-travis
 
 # command to run tests
-script: py.test
+script: tox
 
 # Enable new Travis stack, should speed up builds
 sudo: false
