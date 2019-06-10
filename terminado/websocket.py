@@ -18,6 +18,9 @@ import logging
 import tornado.web
 import tornado.websocket
 
+from .management import MaxTerminalsReached
+
+
 def _cast_unicode(s):
     if isinstance(s, bytes):
         return s.decode('utf-8')
@@ -51,7 +54,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         url_component = _cast_unicode(url_component)
         self.term_name = url_component or 'tty'
-        self.terminal = self.term_manager.get_terminal(url_component)
+        try:
+            self.terminal = self.term_manager.get_terminal(url_component)
+        except MaxTerminalsReached as err:
+            # Raise HTTPError as "Too Many Requests" instead of having tornado have "unhandled exception"
+            raise tornado.web.HTTPError(429, str(err))
+
         for s in self.terminal.read_buffer:
             self.on_pty_read(s)
         self.terminal.clients.append(self)
