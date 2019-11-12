@@ -314,9 +314,9 @@ class NamedTermManager(TermManagerBase):
             if name not in self.terminals:
                 return name
 
-    def new_named_terminal(self):
+    def new_named_terminal(self, **kwargs):
         name = self._next_available_name()
-        term = self.new_terminal()
+        term = self.new_terminal(**kwargs)
         self.log.info("New terminal with automatic name: %s", name)
         term.term_name = name
         self.terminals[name] = term
