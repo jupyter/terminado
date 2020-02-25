@@ -70,8 +70,7 @@ class PtyWithClients(object):
         """Send a signal to the process group of the process in the pty"""
         if os.name == 'nt':
             return self.ptyproc.kill(sig)
-        pgid = os.getpgid(self.ptyproc.pid)
-        os.killpg(pgid, sig)
+        os.killpg(self.ptyproc.pid, sig)
     
     @gen.coroutine
     def terminate(self, force=False):
