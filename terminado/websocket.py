@@ -18,13 +18,16 @@ import logging
 import tornado.web
 import tornado.websocket
 
+
 def _cast_unicode(s):
     if isinstance(s, bytes):
         return s.decode('utf-8')
     return s
 
+
 class TermSocket(tornado.websocket.WebSocketHandler):
     """Handler for a terminal websocket"""
+
     def initialize(self, term_manager):
         self.term_manager = term_manager
         self.term_name = ""
@@ -39,7 +42,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def open(self, url_component=None):
         """Websocket connection opened.
-        
+
         Call our terminal manager to get a terminal, and connect to it as a
         client.
         """
@@ -52,12 +55,18 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         url_component = _cast_unicode(url_component)
         self.term_name = url_component or 'tty'
         self.terminal = self.term_manager.get_terminal(url_component)
-        for s in self.terminal.read_buffer:
-            self.on_pty_read(s)
         self.terminal.clients.append(self)
-
         self.send_json_message(["setup", {}])
         self._logger.info("TermSocket.open: Opened %s", self.term_name)
+        # Now drain the preopen buffer, if it exists.
+        buffered = ""
+        while True:
+            if not self.terminal.preopen_buffer:
+                break
+            s = self.terminal.preopen_buffer.popleft()
+            buffered += s
+        if buffered:
+            self.on_pty_read(buffered)
 
     def on_pty_read(self, text):
         """Data read from pty; send to frontend"""
@@ -69,13 +78,13 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         """Handle incoming websocket message
-        
+
         We send JSON arrays, where the first element is a string indicating
         what kind of message this is. Data associated with the message follows.
         """
         ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
         command = json.loads(message)
-        msg_type = command[0]    
+        msg_type = command[0]
 
         if msg_type == "stdin":
             self.terminal.ptyproc.write(command[1])
@@ -85,7 +94,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def on_close(self):
         """Handle websocket closing.
-        
+
         Disconnect from our terminal, and tell the terminal manager we're
         disconnecting.
         """
