@@ -161,7 +161,10 @@ class CommonTests(TermTestCase):
             response = yield tm.read_msg()
             self.assertEqual(response[0], 'stdout')
             self.assertGreater(len(response[1]), 0)
+            pid = yield tm.get_pid()
             tm.close()
+            if os.name == 'nt':
+                os.kill(pid, 15)
 
     @tornado.testing.gen_test
     def test_basic_command(self):
