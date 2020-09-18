@@ -124,6 +124,12 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
         raise tornado.gen.Return(pids)
 
+    def tearDown(self):
+        self.named_tm.kill_all()
+        self.single_tm.kill_all()
+        self.unique_tm.kill_all()
+        super().tearDown()
+
     def get_app(self):
         self.named_tm = NamedTermManager(shell_command=['bash'], 
                                             max_terminals=MAX_TERMS,
@@ -163,7 +169,6 @@ class CommonTests(TermTestCase):
             self.assertEqual(response[0], 'stdout')
             self.assertGreater(len(response[1]), 0)
             tm.close()        
-        tm.kill_all()
 
     @tornado.testing.gen_test
     def test_basic_command(self):
