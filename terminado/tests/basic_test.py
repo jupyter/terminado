@@ -20,6 +20,11 @@ import os
 import re
 import signal
 
+# We must set the policy for python >=3.8, see https://www.tornadoweb.org/en/stable/#installation
+# Snippet from https://github.com/tornadoweb/tornado/issues/2608#issuecomment-619524992
+import sys, asyncio
+if sys.version_info[0]==3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 #
 # The timeout we use to assume no more messages are coming
