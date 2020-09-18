@@ -18,6 +18,7 @@ import logging
 import json
 import os
 import re
+import signal
 
 
 #
@@ -164,7 +165,7 @@ class CommonTests(TermTestCase):
             pid = yield tm.get_pid()
             tm.close()
             if os.name == 'nt':
-                os.kill(pid, 15)
+                os.kill(pid, signal.CTRL_BREAK_EVENT)
 
     @tornado.testing.gen_test
     def test_basic_command(self):
