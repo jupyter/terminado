@@ -18,7 +18,13 @@ import logging
 import json
 import os
 import re
+import signal
 
+# We must set the policy for python >=3.8, see https://www.tornadoweb.org/en/stable/#installation
+# Snippet from https://github.com/tornadoweb/tornado/issues/2608#issuecomment-619524992
+import sys, asyncio
+if sys.version_info[0]==3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 #
 # The timeout we use to assume no more messages are coming
@@ -123,6 +129,12 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
         raise tornado.gen.Return(pids)
 
+    def tearDown(self):
+        self.named_tm.kill_all()
+        self.single_tm.kill_all()
+        self.unique_tm.kill_all()
+        super().tearDown()
+
     def get_app(self):
         self.named_tm = NamedTermManager(shell_command=['bash'], 
                                             max_terminals=MAX_TERMS,
@@ -161,7 +173,7 @@ class CommonTests(TermTestCase):
             response = yield tm.read_msg()
             self.assertEqual(response[0], 'stdout')
             self.assertGreater(len(response[1]), 0)
-            tm.close()
+            tm.close()        
 
     @tornado.testing.gen_test
     def test_basic_command(self):
