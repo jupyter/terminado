@@ -18,7 +18,7 @@ setup_args = dict(
     include_package_data = True,
     description = "Tornado websocket backend for the Xterm.js Javascript terminal emulator library.",
     long_description = open("README.rst").read(),
-    long_description_content_type="txt/x-rst",
+    long_description_content_type="text/x-rst",
     install_requires = [
         "ptyprocess;os_name!='nt'",
         "pywinpty (>=0.5);os_name=='nt'",
