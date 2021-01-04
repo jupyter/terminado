@@ -1,1 +1,3 @@
 include LICENSE
+include terminado/uimod_embed.js
+include terminado/_static/terminado.js
