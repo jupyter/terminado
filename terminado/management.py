@@ -21,8 +21,11 @@ import signal
 
 try:
     from ptyprocess import PtyProcessUnicode
+    def preexec_fn():
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 except ImportError:
     from winpty import PtyProcess as PtyProcessUnicode
+    preexec_fn = None
 
 from tornado import gen
 from tornado.ioloop import IOLoop
@@ -43,8 +46,10 @@ class PtyWithClients(object):
         # We keep the same read_buffer as before
         self.read_buffer = deque([], maxlen=10)
         self.preopen_buffer = deque([])
-        self.ptyproc = PtyProcessUnicode.spawn(argv, env=env, cwd=cwd,
-            preexec_fn=lambda: signal.signal(signal.SIGPIPE, signal.SIG_DFL))
+        kwargs = dict(argv=argv, env=env, cwd=cwd)
+        if preexec_fn is not None:
+            kwargs["preexec_fn"] = preexec_fn
+        self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
 
     def resize_to_smallest(self):
         """Set the terminal size to that of the smallest client dimensions.
