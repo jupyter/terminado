@@ -43,7 +43,8 @@ class PtyWithClients(object):
         # We keep the same read_buffer as before
         self.read_buffer = deque([], maxlen=10)
         self.preopen_buffer = deque([])
-        self.ptyproc = PtyProcessUnicode.spawn(argv, env=env, cwd=cwd)
+        self.ptyproc = PtyProcessUnicode.spawn(argv, env=env, cwd=cwd,
+            preexec_fn=lambda: signal.signal(signal.SIGPIPE, signal.SIG_DFL))
 
     def resize_to_smallest(self):
         """Set the terminal size to that of the smallest client dimensions.
