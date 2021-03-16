@@ -22,6 +22,11 @@ JS:
 * ``terminado/_static/terminado.js``: A lightweight wrapper to set up a
   term.js terminal with a websocket.
 
+Local Installation:
+
+    $ pip install -e .[test]
+
+
 Usage example:
 
 .. code:: python
@@ -66,4 +71,4 @@ for more examples. This is a simplified version of the ``single.py`` demo.
 
 Run the unit tests with:
 
-    $ nosetests
+    $ pytest
