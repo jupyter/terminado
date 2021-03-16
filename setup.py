@@ -24,6 +24,7 @@ setup_args = dict(
         "pywinpty (>=0.5);os_name=='nt'",
         "tornado (>=4)",
     ],
+    extras_require = dict(test=['pytest']),
     python_requires=">=3.6",
     classifiers=[
         "Environment :: Web Environment",
