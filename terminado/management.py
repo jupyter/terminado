@@ -18,6 +18,7 @@ import itertools
 import logging
 import os
 import signal
+import codecs
 
 try:
     from ptyprocess import PtyProcessUnicode
@@ -50,6 +51,10 @@ class PtyWithClients(object):
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
         self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
+        # The output might not be strictly UTF-8 encoded, so
+        # we replace the inner decoder of PtyProcessUnicode
+        # to allow non-strict decode.
+        self.ptyproc.decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
 
     def resize_to_smallest(self):
         """Set the terminal size to that of the smallest client dimensions.
