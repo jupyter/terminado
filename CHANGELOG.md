@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.4
+
+* Pin pywinpty version [#98](https://github.com/jupyter/terminado/pull/98) ([@jtpio](https://github.com/jtpio))
+
 ## 0.9.3
 
 * Make sure SIGPIPE has default handler set [#91](https://github.com/jupyter/terminado/pull/91) ([@dlukes](https://github.com/dlukes))
