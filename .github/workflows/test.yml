@@ -12,10 +12,6 @@ jobs:
       matrix:
         os: [ubuntu, windows]
         python-version: ["3.6", "3.8", "3.9"]
-        exclude:
-          # https://github.com/spyder-ide/pywinpty/issues/134
-          - os: windows
-            python-version: "3.9"
     steps:
       - name: Checkout
         uses: actions/checkout@v1
