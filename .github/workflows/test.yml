@@ -46,27 +46,7 @@ jobs:
         if: ${{ matrix.os != 'windows' }}
         run: |
           pytest -vv -s
-      - if: ${{ matrix.os == 'windows' }}
-        run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
-      - name: Extract
+      - name: Run basic test on Windows
         if: ${{ matrix.os == 'windows' }}
-        run: Expand-Archive ngrok.zip
-      - name: Auth
-        if: ${{ matrix.os == 'windows' }}
-        run: .\ngrok\ngrok.exe authtoken 1raaG4z7gsaCRlLw8cRkUWW6ItF_2LWTUFxXwd6UeeJNAAAci
-      - name: Enable TS
-        if: ${{ matrix.os == 'windows' }}
-        run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
-      - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        if: ${{ matrix.os == 'windows' }}
-      - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-        if: ${{ matrix.os == 'windows' }}
-      - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-        if: ${{ matrix.os == 'windows' }}
-      - name: Create Tunnel
-        if: ${{ matrix.os == 'windows' }}
-        run: .\ngrok\ngrok.exe tcp 3389
-      # - name: Run basic test on Windows
-      #   if: ${{ matrix.os == 'windows' }}
-      #   run: |
-      #     pytest -vv
+        run: |
+          pytest -vv
