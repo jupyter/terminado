@@ -1,8 +1,14 @@
 # Changelog
 
-## 0.9.4
+## 0.9.5
 
 * Pin pywinpty version [#98](https://github.com/jupyter/terminado/pull/98) ([@jtpio](https://github.com/jtpio))
+
+## 0.9.4
+
+* Allow non-strict decode for process output [#95](https://github.com/jupyter/terminado/pull/95) ([@dong-zeyu](https://github.com/dong-zeyu))
+* Switch to GitHub Actions [#93](https://github.com/jupyter/terminado/pull/93) ([@afshin](https://github.com/afshin))
+* Add generated changelog [#92](https://github.com/jupyter/terminado/pull/92) ([@blink1073](https://github.com/blink1073))
 
 ## 0.9.3
 
