@@ -93,6 +93,7 @@ class TestTermClient(object):
         self.write_stdin("echo $$\r")
         (stdout, extra) = yield self.read_stdout()
         if os.name == 'nt':
+            print(repr(stdout))
             match = re.search(r'echo \$\$\\x1b\[71X\\x1b\[71C\\r\\n(\d+)', repr(stdout))
             if match is None:
                 match = re.search(r'echo \$\$ \\r\\n(\d+)', repr(stdout))
