@@ -49,4 +49,4 @@ jobs:
       - name: Run basic test on Windows
         if: ${{ matrix.os == 'windows' }}
         run: |
-          pytest terminado/tests/basic_test.py::CommonTests::test_basic
+          pytest -vv
