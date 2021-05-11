@@ -97,6 +97,10 @@ class TestTermClient(object):
             match = re.search(r'echo \$\$\\x1b\[71X\\x1b\[71C\\r\\n(\d+)', repr(stdout))
             if match is None:
                 match = re.search(r'echo \$\$ \\r\\n(\d+)', repr(stdout))
+            if match is None:
+                match = re.search(
+                    r'echo \$\$ \\r\\n\\x1b\[\?25h\\x1b\[\?25l(\d+)',
+                    repr(stdout))
             pid = int(match.groups()[0])
         else:
             pid = int(stdout.split('\n')[1])
