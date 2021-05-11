@@ -49,7 +49,7 @@ jobs:
       - name: Run the tests
         if: ${{ matrix.os != 'windows' }}
         run: |
-          pytest -vv
+          pytest -vv -s
       - name: Run basic test on Windows
         if: ${{ matrix.os == 'windows' }}
         run: |
