@@ -19,6 +19,7 @@ import logging
 import os
 import signal
 import codecs
+import warnings
 
 try:
     from ptyprocess import PtyProcessUnicode
@@ -156,10 +157,11 @@ class TermManagerBase(object):
         self.ptys_by_fd = {}
 
         if ioloop is not None:
-            self.ioloop = ioloop
-        else:
-            import tornado.ioloop
-            self.ioloop = tornado.ioloop.IOLoop.instance()
+            warnings.warn(
+                f"Setting {self.__class__.__name__}.ioloop is deprecated and ignored",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
     def make_term_env(self, height=25, width=80, winheight=0, winwidth=0, **kwargs):
         """Build the environment variables for the process in the terminal."""
@@ -194,7 +196,8 @@ class TermManagerBase(object):
         """Connect a terminal to the tornado event loop to read data from it."""
         fd = ptywclients.ptyproc.fd
         self.ptys_by_fd[fd] = ptywclients
-        self.ioloop.add_handler(fd, self.pty_read, self.ioloop.READ)
+        loop = IOLoop.current()
+        loop.add_handler(fd, self.pty_read, loop.READ)
 
     def on_eof(self, ptywclients):
         """Called when the pty has closed.
@@ -203,7 +206,7 @@ class TermManagerBase(object):
         fd = ptywclients.ptyproc.fd
         self.log.info("EOF on FD %d; stopping reading", fd)
         del self.ptys_by_fd[fd]
-        self.ioloop.remove_handler(fd)
+        IOLoop.current().remove_handler(fd)
 
         # This closes the fd, and should result in the process being reaped.
         ptywclients.ptyproc.close()
