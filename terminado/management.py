@@ -6,19 +6,14 @@
 
 from __future__ import absolute_import, print_function
 
-import sys
-if sys.version_info[0] < 3:
-    byte_code = ord
-else:
-    def byte_code(x): return x
-    unicode = str
-
+import asyncio
 from collections import deque
 import itertools
 import logging
 import os
 import signal
 import codecs
+import warnings
 
 try:
     from ptyprocess import PtyProcessUnicode
@@ -28,7 +23,6 @@ except ImportError:
     from winpty import PtyProcess as PtyProcessUnicode
     preexec_fn = None
 
-from tornado import gen
 from tornado.ioloop import IOLoop
 
 ENV_PREFIX = "PYXTERM_"         # Environment variable prefix
@@ -60,7 +54,7 @@ class PtyWithClients(object):
         """Set the terminal size to that of the smallest client dimensions.
 
         A terminal not using the full space available is much nicer than a
-        terminal trying to use more than the available space, so we keep it 
+        terminal trying to use more than the available space, so we keep it
         sized to the smallest client.
         """
         minrows = mincols = 10001
@@ -89,8 +83,7 @@ class PtyWithClients(object):
         pgid = os.getpgid(self.ptyproc.pid)
         os.killpg(pgid, sig)
 
-    @gen.coroutine
-    def terminate(self, force=False):
+    async def terminate(self, force=False):
         '''This forces a child process to terminate. It starts nicely with
         SIGHUP and SIGINT. If "force" is True then moves onto SIGKILL. This
         returns True if the child was terminated. This returns False if the
@@ -102,34 +95,34 @@ class PtyWithClients(object):
                        signal.SIGTERM]
 
         loop = IOLoop.current()
-        def sleep(): return gen.sleep(self.ptyproc.delayafterterminate)
+        def sleep(): return asyncio.sleep(self.ptyproc.delayafterterminate)
 
         if not self.ptyproc.isalive():
-            raise gen.Return(True)
+            return True
         try:
             for sig in signals:
                 self.kill(sig)
-                yield sleep()
+                await sleep()
                 if not self.ptyproc.isalive():
-                    raise gen.Return(True)
+                    return True
             if force:
                 self.kill(signal.SIGKILL)
-                yield sleep()
+                await sleep()
                 if not self.ptyproc.isalive():
-                    raise gen.Return(True)
+                    return True
                 else:
-                    raise gen.Return(False)
-            raise gen.Return(False)
+                    return False
+            return False
         except OSError:
             # I think there are kernel timing issues that sometimes cause
             # this to happen. I think isalive() reports True, but the
             # process is dead to the kernel.
             # Make one last attempt to see if the kernel is up to date.
-            yield sleep()
+            await sleep()
             if not self.ptyproc.isalive():
-                raise gen.Return(True)
+                return True
             else:
-                raise gen.Return(False)
+                return False
 
 
 def _update_removing(target, changes):
@@ -156,10 +149,11 @@ class TermManagerBase(object):
         self.ptys_by_fd = {}
 
         if ioloop is not None:
-            self.ioloop = ioloop
-        else:
-            import tornado.ioloop
-            self.ioloop = tornado.ioloop.IOLoop.instance()
+            warnings.warn(
+                f"Setting {self.__class__.__name__}.ioloop is deprecated and ignored",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
     def make_term_env(self, height=25, width=80, winheight=0, winwidth=0, **kwargs):
         """Build the environment variables for the process in the terminal."""
@@ -194,7 +188,8 @@ class TermManagerBase(object):
         """Connect a terminal to the tornado event loop to read data from it."""
         fd = ptywclients.ptyproc.fd
         self.ptys_by_fd[fd] = ptywclients
-        self.ioloop.add_handler(fd, self.pty_read, self.ioloop.READ)
+        loop = IOLoop.current()
+        loop.add_handler(fd, self.pty_read, loop.READ)
 
     def on_eof(self, ptywclients):
         """Called when the pty has closed.
@@ -203,7 +198,7 @@ class TermManagerBase(object):
         fd = ptywclients.ptyproc.fd
         self.log.info("EOF on FD %d; stopping reading", fd)
         del self.ptys_by_fd[fd]
-        self.ioloop.remove_handler(fd)
+        IOLoop.current().remove_handler(fd)
 
         # This closes the fd, and should result in the process being reaped.
         ptywclients.ptyproc.close()
@@ -240,18 +235,16 @@ class TermManagerBase(object):
         """
         pass
 
-    @gen.coroutine
-    def shutdown(self):
-        yield self.kill_all()
+    async def shutdown(self):
+        await self.kill_all()
 
-    @gen.coroutine
-    def kill_all(self):
+    async def kill_all(self):
         futures = []
         for term in self.ptys_by_fd.values():
             futures.append(term.terminate(force=True))
         # wait for futures to finish
-        for f in futures:
-            yield f
+        if futures:
+            await asyncio.gather(*futures)
 
 
 class SingleTermManager(TermManagerBase):
@@ -267,9 +260,8 @@ class SingleTermManager(TermManagerBase):
             self.start_reading(self.terminal)
         return self.terminal
 
-    @gen.coroutine
-    def kill_all(self):
-        yield super(SingleTermManager, self).kill_all()
+    async def kill_all(self):
+        await super().kill_all()
         self.terminal = None
 
 
@@ -344,7 +336,10 @@ class NamedTermManager(TermManagerBase):
                 return name
 
     def new_named_terminal(self, **kwargs):
-        name = self._next_available_name()
+        if 'name' in kwargs:
+            name = kwargs['name']
+        else:
+            name = self._next_available_name()
         term = self.new_terminal(**kwargs)
         self.log.info("New terminal with automatic name: %s", name)
         term.term_name = name
@@ -356,10 +351,9 @@ class NamedTermManager(TermManagerBase):
         term = self.terminals[name]
         term.kill(sig)   # This should lead to an EOF
 
-    @gen.coroutine
-    def terminate(self, name, force=False):
+    async def terminate(self, name, force=False):
         term = self.terminals[name]
-        yield term.terminate(force=force)
+        await term.terminate(force=force)
 
     def on_eof(self, ptywclients):
         super(NamedTermManager, self).on_eof(ptywclients)
@@ -367,7 +361,6 @@ class NamedTermManager(TermManagerBase):
         self.log.info("Terminal %s closed", name)
         self.terminals.pop(name, None)
 
-    @gen.coroutine
-    def kill_all(self):
-        yield super(NamedTermManager, self).kill_all()
+    async def kill_all(self):
+        await super().kill_all()
         self.terminals = {}
