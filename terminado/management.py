@@ -336,7 +336,10 @@ class NamedTermManager(TermManagerBase):
                 return name
 
     def new_named_terminal(self, **kwargs):
-        name = self._next_available_name()
+        if 'name' in kwargs:
+            name = kwargs['name']
+        else:
+            name = self._next_available_name()
         term = self.new_terminal(**kwargs)
         self.log.info("New terminal with automatic name: %s", name)
         term.term_name = name
