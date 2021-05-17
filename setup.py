@@ -21,7 +21,7 @@ setup_args = dict(
     long_description_content_type="text/x-rst",
     install_requires = [
         "ptyprocess;os_name!='nt'",
-        "pywinpty (>=1.0.1);os_name=='nt'",
+        "pywinpty (>=1.1.0);os_name=='nt'",
         "tornado (>=4)",
     ],
     extras_require = dict(test=['pytest']),
