@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.0
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/0.9.5...fbba87e45daa65029ad58a88b63384bffbf29937))
+
+### Enhancements made
+
+- Support creating terminal given name in kwargs. [#104](https://github.com/jupyter/terminado/pull/104) ([@cailiang9](https://github.com/cailiang9))
+
+### Bugs fixed
+
+- avoid persistent handle on IOLoop instance [#102](https://github.com/jupyter/terminado/pull/102) ([@minrk](https://github.com/minrk))
+
+### Maintenance and upkeep improvements
+
+- async/await syntax [#103](https://github.com/jupyter/terminado/pull/103) ([@minrk](https://github.com/minrk))
+- PR: Pin pywinpty version to 1.1.0 [#101](https://github.com/jupyter/terminado/pull/101) ([@andfoy](https://github.com/andfoy))
+
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-05-11&to=2021-05-18&type=c))
+
+[@andfoy](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aandfoy+updated%3A2021-05-11..2021-05-18&type=Issues) | [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2021-05-11..2021-05-18&type=Issues) | [@cailiang9](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Acailiang9+updated%3A2021-05-11..2021-05-18&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aminrk+updated%3A2021-05-11..2021-05-18&type=Issues)
+
 ## 0.9.5
 
 * Pin pywinpty version [#98](https://github.com/jupyter/terminado/pull/98) ([@jtpio](https://github.com/jtpio))
