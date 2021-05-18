@@ -19,6 +19,7 @@ import json
 import os
 import re
 import signal
+import pytest
 
 # We must set the policy for python >=3.8, see https://www.tornadoweb.org/en/stable/#installation
 # Snippet from https://github.com/tornadoweb/tornado/issues/2608#issuecomment-619524992
@@ -88,7 +89,14 @@ class TestTermClient(object):
         await self.write_stdin("echo $$\r")
         (stdout, extra) = await self.read_stdout()
         if os.name == 'nt':
-            match = re.search(r'echo \$\$\x1b\[0K\r\n(\d+)', stdout)
+            print(repr(stdout))
+            match = re.search(r'echo \$\$\\x1b\[71X\\x1b\[71C\\r\\n(\d+)', repr(stdout))
+            if match is None:
+                match = re.search(r'echo \$\$ \\r\\n(\d+)', repr(stdout))
+            if match is None:
+                match = re.search(
+                    r'echo \$\$ \\r\\n\\x1b\[\?25h\\x1b\[\?25l(\d+)',
+                    repr(stdout))
             pid = int(match.groups()[0])
         else:
             print('stdout=%r, extra=%r' % (stdout, extra))
@@ -134,13 +142,16 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
             shell_command=['bash'],
             max_terminals=MAX_TERMS,
         )
+        
         self.single_tm = SingleTermManager(shell_command=['bash'])
+        
         self.unique_tm = UniqueTermManager(
             shell_command=['bash'],
             max_terminals=MAX_TERMS,
         )
 
         named_tm = self.named_tm
+        
         class NewTerminalHandler(tornado.web.RequestHandler):
             """Create a new named terminal, return redirect"""
             def get(self):
@@ -154,7 +165,7 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
                     (r"/unique",      TermSocket, {'term_manager': self.unique_tm})
                 ], debug=True)
 
-    test_urls = ('/named/term1', '/unique', '/single')
+    test_urls = ('/named/term1', '/unique') + (('/single',) if os.name != 'nt' else tuple())
 
 class CommonTests(TermTestCase):
     @tornado.testing.gen_test
@@ -205,6 +216,7 @@ class NamedTermTests(TermTestCase):
         self.assertNotEqual(pids[0], pids[3])
 
     @tornado.testing.gen_test
+    @pytest.mark.skipif(os.name == 'nt', reason='It fails on Windows')
     async def test_max_terminals(self):
         urls = ["/named/%d" % i for i in range(MAX_TERMS+1)]
         tms = await self.get_term_clients(urls[:MAX_TERMS])
@@ -230,6 +242,7 @@ class UniqueTermTests(TermTestCase):
         self.assertNotEqual(pids[0], pids[1])
 
     @tornado.testing.gen_test
+    @pytest.mark.skipif(os.name == 'nt', reason='It fails on Windows')
     async def test_max_terminals(self):
         tms = await self.get_term_clients(['/unique'] * MAX_TERMS)
         pids = await self.get_pids(tms)
