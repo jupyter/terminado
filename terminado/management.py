@@ -14,6 +14,7 @@ import os
 import signal
 import codecs
 import warnings
+import select
 
 try:
     from ptyprocess import PtyProcessUnicode
@@ -205,6 +206,9 @@ class TermManagerBase(object):
 
     def pty_read(self, fd, events=None):
         """Called by the event loop when there is pty data ready to read."""
+        r, _, _ = select.select([fd], [], [], .1)
+        if not r:
+            return
         ptywclients = self.ptys_by_fd[fd]
         try:
             s = ptywclients.ptyproc.read(65536)
