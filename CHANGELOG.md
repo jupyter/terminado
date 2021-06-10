@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.1
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/0.10.0...ada2b93a57bd0ebfae87d75b7561e2cd53ba598f))
+
+### Bugs fixed
+
+- Fix blocking of pty_read when there isn't pty data ready to read [#107](https://github.com/jupyter/terminado/pull/107) ([@icankeep](https://github.com/icankeep))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-05-18&to=2021-06-10&type=c))
+
+[@icankeep](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aicankeep+updated%3A2021-05-18..2021-06-10&type=Issues)
+
 ## 0.10.0
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/0.9.5...fbba87e45daa65029ad58a88b63384bffbf29937))
