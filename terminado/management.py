@@ -136,6 +136,19 @@ def _update_removing(target, changes):
             target[k] = v
 
 
+def _poll(fd, timeout: float = 0.1):
+    """Poll using poll() on posix systems and select() elsewhere (e.g., Windows)
+    """
+    if os.name == "posix":
+        poller = select.poll()  # noqa: ignore missing method on Windows
+        poller.register(fd, select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR)  # read-only
+        return poller.poll(timeout * 1000)  # milliseconds
+    else:
+        # poll() not supported on Windows
+        r, _, _ = select.select([fd], [], [], timeout)
+        return r
+
+
 class TermManagerBase(object):
     """Base class for a terminal manager."""
 
@@ -206,8 +219,9 @@ class TermManagerBase(object):
 
     def pty_read(self, fd, events=None):
         """Called by the event loop when there is pty data ready to read."""
-        r, _, _ = select.select([fd], [], [], .1)
-        if not r:
+        # prevent blocking on fd
+        if not _poll(fd, timeout=0.1):  # 100ms
+            self.log.debug(f"Spurious pty_read() on fd {fd}")
             return
         ptywclients = self.ptys_by_fd[fd]
         try:
