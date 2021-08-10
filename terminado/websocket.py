@@ -14,6 +14,7 @@ except ImportError:
 
 import json
 import logging
+import re
 
 import tornado.web
 import tornado.websocket
@@ -35,6 +36,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal = None
 
         self._logger = logging.getLogger(__name__)
+        self._user_command = ''
 
     def origin_check(self, origin=None):
         """Deprecated: backward-compat for terminado <= 0.5."""
@@ -74,6 +76,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def send_json_message(self, content):
         json_msg = json.dumps(content)
+        pattern = re.compile(r'^(\w|\d)+')
+        try:
+            if pattern.search(content[1]):
+                self._logger.info(f'STDOUT: {content[1]}')
+        except TypeError as e:
+            self._logger.error(f'not able to serialize: {e}')
         self.write_message(json_msg)
 
     def on_message(self, message):
@@ -88,6 +96,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         if msg_type == "stdin":
             self.terminal.ptyproc.write(command[1])
+            if command[1] == '\r':
+                self._logger.info(f'STDIN: {self._user_command}')
+                self._user_command = ''
+            else:
+                self._user_command += command[1]
         elif msg_type == "set_size":
             self.size = command[1:3]
             self.terminal.resize_to_smallest()
