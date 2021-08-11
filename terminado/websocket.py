@@ -7,6 +7,8 @@
 from __future__ import absolute_import, print_function
 
 # Python3-friendly imports
+import os
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -79,7 +81,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         pattern = re.compile(r'^(\w|\d)+')
         try:
             if pattern.search(content[1]):
-                self._logger.info(f'STDOUT: {content[1]}')
+                self.log_terminal_output(f'STDOUT: {content[1]}')
         except TypeError as e:
             self._logger.error(f'not able to serialize: {e}')
         self.write_message(json_msg)
@@ -97,7 +99,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if msg_type == "stdin":
             self.terminal.ptyproc.write(command[1])
             if command[1] == '\r':
-                self._logger.info(f'STDIN: {self._user_command}')
+                self.log_terminal_output(f'STDIN: {self._user_command}')
                 self._user_command = ''
             else:
                 self._user_command += command[1]
@@ -123,3 +125,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.send_json_message(['disconnect', 1])
         self.close()
         self.terminal = None
+
+    def log_terminal_output(self, log: str = ''):
+        """
+        Logs the terminal input/output if the environment variable LOG_TERMINAL_OUTPUT is "true"
+        :param log: log line to write
+        :return:
+        """
+        if str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true":
+            self._logger.debug(log)
