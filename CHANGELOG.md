@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/0.10.1...baa26d500a3836ba8835b6c674e60ddf0e79295e))
+
+### Enhancements made
+
+- Log terminal output [#112](https://github.com/jupyter/terminado/pull/112) ([@OmriShiv](https://github.com/OmriShiv))
+
+### Bugs fixed
+
+- Switch select() to poll() in pty_read() [#111](https://github.com/jupyter/terminado/pull/111) ([@arjanvandervelde](https://github.com/arjanvandervelde))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-06-10&to=2021-08-12&type=c))
+
+[@arjanvandervelde](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aarjanvandervelde+updated%3A2021-06-10..2021-08-12&type=Issues) | [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2021-06-10..2021-08-12&type=Issues) | [@OmriShiv](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3AOmriShiv+updated%3A2021-06-10..2021-08-12&type=Issues)
+
 ## 0.10.1
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/0.10.0...ada2b93a57bd0ebfae87d75b7561e2cd53ba598f))
