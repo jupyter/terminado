@@ -20,6 +20,7 @@ import os
 import re
 import signal
 import pytest
+from sys import platform
 
 # We must set the policy for python >=3.8, see https://www.tornadoweb.org/en/stable/#installation
 # Snippet from https://github.com/tornadoweb/tornado/issues/2608#issuecomment-619524992
@@ -216,7 +217,7 @@ class NamedTermTests(TermTestCase):
         self.assertNotEqual(pids[0], pids[3])
 
     @tornado.testing.gen_test
-    @pytest.mark.skipif(os.name == 'nt', reason='It fails on Windows')
+    @pytest.mark.skipif('linux' not in platform, reason='It only works on Linux')
     async def test_max_terminals(self):
         urls = ["/named/%d" % i for i in range(MAX_TERMS+1)]
         tms = await self.get_term_clients(urls[:MAX_TERMS])
@@ -242,7 +243,7 @@ class UniqueTermTests(TermTestCase):
         self.assertNotEqual(pids[0], pids[1])
 
     @tornado.testing.gen_test
-    @pytest.mark.skipif(os.name == 'nt', reason='It fails on Windows')
+    @pytest.mark.skipif('linux' not in platform, reason='It only works on Linux')
     async def test_max_terminals(self):
         tms = await self.get_term_clients(['/unique'] * MAX_TERMS)
         pids = await self.get_pids(tms)
