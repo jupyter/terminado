@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.11.1
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/0.11.0...0fa5a0cb9cc3b622457b492759998686cb83b10a))
+
+### Maintenance and upkeep improvements
+
+- Clean up tests [#114](https://github.com/jupyter/terminado/pull/114) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-08-12&to=2021-08-18&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2021-08-12..2021-08-18&type=Issues)
+
 ## 0.11.0
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/0.10.1...baa26d500a3836ba8835b6c674e60ddf0e79295e))
