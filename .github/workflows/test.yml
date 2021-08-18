@@ -10,8 +10,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu, windows]
-        python-version: ["3.6", "3.8", "3.9"]
+        os: [ubuntu, macos, windows]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "pypy3"]
+        exclude:
+          - os: windows
+            python-version: pypy3
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -45,8 +48,8 @@ jobs:
       - name: Run the tests
         if: ${{ matrix.os != 'windows' }}
         run: |
-          pytest -vv -s
+          pytest -vv -s || pytest -vv -s --lf
       - name: Run basic test on Windows
         if: ${{ matrix.os == 'windows' }}
         run: |
-          pytest -vv
+          pytest -vv || pytest -vv --lf
