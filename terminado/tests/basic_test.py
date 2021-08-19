@@ -257,12 +257,12 @@ class UniqueTermTests(TermTestCase):
         # Close one
         tms[0].close()
         msg = await tms[0].read_msg()           # Closed
-        self.assertEquals(msg, None)
+        self.assertEqual(msg, None)
 
         # Should be able to open back up to MAX_TERMS
         tm = await self.get_term_client("/unique")
         msg = await tm.read_msg()
-        self.assertEquals(msg[0], 'setup')
+        self.assertEqual(msg[0], 'setup')
 
 if __name__ == '__main__':
     unittest.main()
