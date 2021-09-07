@@ -28,6 +28,7 @@ from tornado.ioloop import IOLoop
 
 ENV_PREFIX = "PYXTERM_"         # Environment variable prefix
 
+# TERM is set according to xterm.js capabilities
 DEFAULT_TERM_TYPE = "xterm-256color"
 
 
@@ -172,8 +173,9 @@ class TermManagerBase(object):
     def make_term_env(self, height=25, width=80, winheight=0, winwidth=0, **kwargs):
         """Build the environment variables for the process in the terminal."""
         env = os.environ.copy()
-        if "TERM" not in env or "type" in self.term_settings:
-            env["TERM"] = self.term_settings.get("type", DEFAULT_TERM_TYPE)
+        # ignore any previously set TERM
+        # TERM is set according to xterm.js capabilities
+        env["TERM"] = self.term_settings.get("type", DEFAULT_TERM_TYPE)
         dimensions = "%dx%d" % (width, height)
         if winwidth and winheight:
             dimensions += ";%dx%d" % (winwidth, winheight)
