@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.12.1
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/0.12.0...a70e0bf98a597ce4d1ac5aa6915e70cf6e00789e))
+
+### Bugs fixed
+
+- Revert "only override TERM if its not previously set" [#119](https://github.com/jupyter/terminado/pull/119) ([@rvalieris](https://github.com/rvalieris))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-09-07&to=2021-09-07&type=c))
+
+[@rvalieris](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Arvalieris+updated%3A2021-09-07..2021-09-07&type=Issues)
+
 ## 0.12.0
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/0.11.1...89425f34beb639eb10d7534cf8ce789d18f22c71))
