@@ -12,4 +12,4 @@ import logging
 # Prevent a warning about no attached handlers in Python 2
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-__version__ = '0.12.0'
+__version__ = '0.12.1'
