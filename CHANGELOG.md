@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.12.0
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/0.11.1...89425f34beb639eb10d7534cf8ce789d18f22c71))
+
+### Bugs fixed
+
+- correctly set the TERM variable [#117](https://github.com/jupyter/terminado/pull/117) ([@rvalieris](https://github.com/rvalieris))
+
+### Maintenance and upkeep improvements
+
+- Replace deprecated unittest aliases [#116](https://github.com/jupyter/terminado/pull/116) ([@hugovk](https://github.com/hugovk))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-08-18&to=2021-09-07&type=c))
+
+[@hugovk](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ahugovk+updated%3A2021-08-18..2021-09-07&type=Issues) | [@rvalieris](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Arvalieris+updated%3A2021-08-18..2021-09-07&type=Issues)
+
+
 ## 0.11.1
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/0.11.0...0fa5a0cb9cc3b622457b492759998686cb83b10a))
