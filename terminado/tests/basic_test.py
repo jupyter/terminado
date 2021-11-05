@@ -39,6 +39,8 @@ MAX_TERMS = 3                               # Testing thresholds
 
 class TestTermClient(object):
     """Test connection to a terminal manager"""
+    __test__ = False
+
     def __init__(self, websocket):
         self.ws = websocket
         self.pending_read = None
