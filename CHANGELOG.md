@@ -16,7 +16,7 @@
 
 [@rvalieris](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Arvalieris+updated%3A2021-09-07..2021-09-07&type=Issues)
 
-<!-- <START NEW CHANGELOG ENTRY> -->
+<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.0
 
