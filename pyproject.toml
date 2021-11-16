@@ -1,3 +1,20 @@
 [build-system]
-requires = ["setuptools>=40.8.0", "wheel"]
+requires = ["setuptools>=40.8.0", "wheel", "tornado"]
 build-backend = "setuptools.build_meta"
+
+[tool.jupyter-releaser]
+skip = ["check-links"]
+
+[tool.tbump.version]
+current = "0.12.1"
+regex = '''
+  (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)
+  ((?P<channel>a|b|rc|.dev)(?P<release>\d+))?
+'''
+
+[tool.tbump.git]
+message_template = "Bump to {new_version}"
+tag_template = "v{new_version}"
+
+[[tool.tbump.file]]
+src = "terminado/__init__.py"

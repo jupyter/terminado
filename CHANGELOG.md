@@ -1,5 +1,7 @@
 # Changelog
 
+<!-- <START NEW CHANGELOG ENTRY> -->
+
 ## 0.12.1
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/0.12.0...a70e0bf98a597ce4d1ac5aa6915e70cf6e00789e))
@@ -13,6 +15,8 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-09-07&to=2021-09-07&type=c))
 
 [@rvalieris](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Arvalieris+updated%3A2021-09-07..2021-09-07&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.0
 
