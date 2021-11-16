@@ -1,5 +1,6 @@
 include LICENSE
 include CHANGELOG.md
+include RELEASE.md
 include terminado/uimod_embed.js
 include terminado/_static/terminado.js
 
