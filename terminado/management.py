@@ -21,7 +21,10 @@ try:
     def preexec_fn():
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 except ImportError:
-    from winpty import PtyProcess as PtyProcessUnicode
+    try:
+        from winpty import PtyProcess as PtyProcessUnicode
+    except ImportError:
+        PtyProcessUnicode = object
     preexec_fn = None
 
 from tornado.ioloop import IOLoop
