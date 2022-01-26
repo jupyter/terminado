@@ -2,6 +2,22 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.12.4
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.12.3...335e59d6e6c6574d2f0b48360dac9680faeeaa1a))
+
+### Maintenance and upkeep improvements
+
+- Fix formatting of trove classifiers again [#131](https://github.com/jupyter/terminado/pull/131) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-26&to=2022-01-26&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-26..2022-01-26&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.12.3
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.12.2...d0510462c73663790bdb0ae87640b7565866d1f9))
@@ -19,8 +35,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-26&to=2022-01-26&type=c))
 
 [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-26..2022-01-26&type=Issues) | [@devmonkey22](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adevmonkey22+updated%3A2022-01-26..2022-01-26&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.2
 
