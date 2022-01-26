@@ -14,11 +14,9 @@ from tornado.httpclient import HTTPError
 from tornado.ioloop import IOLoop
 import tornado.testing
 import datetime
-import logging
 import json
 import os
 import re
-import signal
 import pytest
 from sys import platform
 
