@@ -2,6 +2,28 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.13.0
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.12.4...d663c886bf39880585f97a2f46e28c3d368ea0f3))
+
+### Enhancements made
+
+- Add pre_pty_read_hook in pty_read [#136](https://github.com/jupyter/terminado/pull/136) ([@Wh1isper](https://github.com/Wh1isper))
+
+### Maintenance and upkeep improvements
+
+- Officially drop support for python 3.6 [#137](https://github.com/jupyter/terminado/pull/137) ([@blink1073](https://github.com/blink1073))
+- Fix even more setup.cfg formatting [#134](https://github.com/jupyter/terminado/pull/134) ([@blink1073](https://github.com/blink1073))
+- Fix more setup.cfg formatting [#133](https://github.com/jupyter/terminado/pull/133) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-26&to=2022-01-27&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-26..2022-01-27&type=Issues) | [@Wh1isper](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3AWh1isper+updated%3A2022-01-26..2022-01-27&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.12.4
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.12.3...335e59d6e6c6574d2f0b48360dac9680faeeaa1a))
@@ -15,8 +37,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-26&to=2022-01-26&type=c))
 
 [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-26..2022-01-26&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.3
 
