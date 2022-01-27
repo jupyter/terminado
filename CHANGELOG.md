@@ -2,6 +2,58 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.12.4
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.12.3...335e59d6e6c6574d2f0b48360dac9680faeeaa1a))
+
+### Maintenance and upkeep improvements
+
+- Fix formatting of trove classifiers again [#131](https://github.com/jupyter/terminado/pull/131) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-26&to=2022-01-26&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-26..2022-01-26&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
+## 0.12.3
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.12.2...d0510462c73663790bdb0ae87640b7565866d1f9))
+
+### Bugs fixed
+
+- Fix terminal output logging type error [#122](https://github.com/jupyter/terminado/pull/122) ([@devmonkey22](https://github.com/devmonkey22))
+
+### Maintenance and upkeep improvements
+
+- Fix formatting of trove classifiers [#129](https://github.com/jupyter/terminado/pull/129) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-26&to=2022-01-26&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-26..2022-01-26&type=Issues) | [@devmonkey22](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adevmonkey22+updated%3A2022-01-26..2022-01-26&type=Issues)
+
+## 0.12.2
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/0.12.1...eea43b51a25be52e2e53334f94a5005a22d12109))
+
+### Bugs fixed
+
+- Use read_buffer for reconnect and remove preopen_buffer [#127](https://github.com/jupyter/terminado/pull/127) ([@Wh1isper](https://github.com/Wh1isper))
+
+### Maintenance and upkeep improvements
+
+- Run CI Daily [#125](https://github.com/jupyter/terminado/pull/125) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-09-07&to=2022-01-26&type=c))
+
+[@andfoy](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aandfoy+updated%3A2021-09-07..2022-01-26&type=Issues) | [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2021-09-07..2022-01-26&type=Issues) | [@Wh1isper](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3AWh1isper+updated%3A2021-09-07..2022-01-26&type=Issues)
+
 ## 0.12.1
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/0.12.0...a70e0bf98a597ce4d1ac5aa6915e70cf6e00789e))
@@ -15,8 +67,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-09-07&to=2021-09-07&type=c))
 
 [@rvalieris](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Arvalieris+updated%3A2021-09-07..2021-09-07&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.0
 
@@ -35,7 +85,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2021-08-18&to=2021-09-07&type=c))
 
 [@hugovk](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ahugovk+updated%3A2021-08-18..2021-09-07&type=Issues) | [@rvalieris](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Arvalieris+updated%3A2021-08-18..2021-09-07&type=Issues)
-
 
 ## 0.11.1
 
@@ -99,7 +148,6 @@
 
 - async/await syntax [#103](https://github.com/jupyter/terminado/pull/103) ([@minrk](https://github.com/minrk))
 - PR: Pin pywinpty version to 1.1.0 [#101](https://github.com/jupyter/terminado/pull/101) ([@andfoy](https://github.com/andfoy))
-
 
 ### Contributors to this release
 

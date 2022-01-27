@@ -16,9 +16,7 @@ except ImportError:
 
 import json
 import logging
-import re
 
-import tornado.web
 import tornado.websocket
 
 
@@ -39,6 +37,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         self._logger = logging.getLogger(__name__)
         self._user_command = ''
+
+        # Enable if the environment variable LOG_TERMINAL_OUTPUT is "true"
+        self._enable_output_logging = (str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true")
 
     def origin_check(self, origin=None):
         """Deprecated: backward-compat for terminado <= 0.5."""
@@ -79,13 +80,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def send_json_message(self, content):
         json_msg = json.dumps(content)
-        pattern = re.compile(r'^(\w|\d)+')
-        try:
-            if pattern.search(content[1]):
-                self.log_terminal_output(f'STDOUT: {content[1]}')
-        except TypeError as e:
-            self._logger.error(f'not able to serialize: {e}')
         self.write_message(json_msg)
+
+        if self._enable_output_logging:
+            if content[0] == "stdout" and isinstance(content[1], str):
+                self.log_terminal_output(f'STDOUT: {content[1]}')
 
     def on_message(self, message):
         """Handle incoming websocket message
@@ -99,11 +98,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         if msg_type == "stdin":
             self.terminal.ptyproc.write(command[1])
-            if command[1] == '\r':
-                self.log_terminal_output(f'STDIN: {self._user_command}')
-                self._user_command = ''
-            else:
-                self._user_command += command[1]
+            if self._enable_output_logging:
+                if command[1] == '\r':
+                    self.log_terminal_output(f'STDIN: {self._user_command}')
+                    self._user_command = ''
+                else:
+                    self._user_command += command[1]
         elif msg_type == "set_size":
             self.size = command[1:3]
             self.terminal.resize_to_smallest()
@@ -129,9 +129,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def log_terminal_output(self, log: str = ''):
         """
-        Logs the terminal input/output if the environment variable LOG_TERMINAL_OUTPUT is "true"
+        Logs the terminal input/output
         :param log: log line to write
         :return:
         """
-        if str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true":
-            self._logger.debug(log)
+        self._logger.debug(log)
