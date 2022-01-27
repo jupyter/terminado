@@ -2,6 +2,22 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.13.1
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.13.0...b522de5796e56c98a74918873ff453f828fb123e))
+
+### Maintenance and upkeep improvements
+
+- python_requires is an option in setup.cfg [#140](https://github.com/jupyter/terminado/pull/140) ([@minrk](https://github.com/minrk))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-27&to=2022-01-27&type=c))
+
+[@minrk](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aminrk+updated%3A2022-01-27..2022-01-27&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.13.0
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.12.4...d663c886bf39880585f97a2f46e28c3d368ea0f3))
@@ -21,8 +37,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-26&to=2022-01-27&type=c))
 
 [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-26..2022-01-27&type=Issues) | [@Wh1isper](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3AWh1isper+updated%3A2022-01-26..2022-01-27&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.4
 
