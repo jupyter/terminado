@@ -18,6 +18,8 @@ import select
 
 try:
     from ptyprocess import PtyProcessUnicode
+
+
     def preexec_fn():
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 except ImportError:
@@ -29,7 +31,7 @@ except ImportError:
 
 from tornado.ioloop import IOLoop
 
-ENV_PREFIX = "PYXTERM_"         # Environment variable prefix
+ENV_PREFIX = "PYXTERM_"  # Environment variable prefix
 
 # TERM is set according to xterm.js capabilities
 DEFAULT_TERM_TYPE = "xterm-256color"
@@ -94,7 +96,9 @@ class PtyWithClients(object):
                        signal.SIGTERM]
 
         loop = IOLoop.current()
-        def sleep(): return asyncio.sleep(self.ptyproc.delayafterterminate)
+
+        def sleep():
+            return asyncio.sleep(self.ptyproc.delayafterterminate)
 
         if not self.ptyproc.isalive():
             return True
@@ -225,8 +229,8 @@ class TermManagerBase(object):
             return
         ptywclients = self.ptys_by_fd[fd]
         try:
+            self.pre_pty_read_hook(ptywclients)
             s = ptywclients.ptyproc.read(65536)
-            client_list = ptywclients.clients
             ptywclients.read_buffer.append(s)
             for client in ptywclients.clients:
                 client.on_pty_read(s)
@@ -234,6 +238,9 @@ class TermManagerBase(object):
             self.on_eof(ptywclients)
             for client in ptywclients.clients:
                 client.on_pty_died()
+
+    def pre_pty_read_hook(self, ptywclients):
+        """Hook before pty read, subclass can patch something into ptywclients when pty_read"""
 
     def get_terminal(self, url_component=None):
         """Override in a subclass to give a terminal to a new websocket connection
