@@ -216,10 +216,6 @@ class NamedTermTests(TermTestCase):
         self.assertEqual(pids[2], pids[3])
         self.assertNotEqual(pids[0], pids[3])
 
-    @tornado.testing.gen_test
-    async def test_namespace_terminate(self):
-        names = ["/named/1"]*2 + ["/named/2"]*2
-        tms = await self.get_term_clients(names)
         terminal = self.named_tm.terminals["1"]
         killed = await terminal.terminate(True)
         assert killed
@@ -244,9 +240,6 @@ class SingleTermTests(TermTestCase):
         pids = await self.get_pids(tms)
         self.assertEqual(pids[0], pids[1])
 
-    @tornado.testing.gen_test
-    async def test_single_process_terminate(self):
-        tms = await self.get_term_clients(["/single", "/single"])
         killed = await self.single_tm.terminal.terminate(True)
         assert killed
         assert self.single_tm.terminal.ptyproc.closed
