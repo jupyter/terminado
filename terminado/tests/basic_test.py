@@ -91,13 +91,7 @@ class TestTermClient(object):
         (stdout, extra) = await self.read_stdout()
         if os.name == 'nt':
             print(repr(stdout))
-            match = re.search(r'echo \$\$\\x1b\[71X\\x1b\[71C\\r\\n(\d+)', repr(stdout))
-            if match is None:
-                match = re.search(r'echo \$\$ \\r\\n(\d+)', repr(stdout))
-            if match is None:
-                match = re.search(
-                    r'echo \$\$ \\r\\n\\x1b\[\?25h\\x1b\[\?25l(\d+)',
-                    repr(stdout))
+            match = re.search(r'echo \$\$\\.*?\\r\\n(\d+)', repr(stdout))
             pid = int(match.groups()[0])
         else:
             print('stdout=%r, extra=%r' % (stdout, extra))
