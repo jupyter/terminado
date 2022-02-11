@@ -223,7 +223,6 @@ class NamedTermTests(TermTestCase):
         terminal = self.named_tm.terminals["1"]
         killed = await terminal.terminate(True)
         assert killed
-        assert terminal.ptyproc.terminated
         assert terminal.ptyproc.closed
 
     @tornado.testing.gen_test
@@ -250,7 +249,6 @@ class SingleTermTests(TermTestCase):
         tms = await self.get_term_clients(["/single", "/single"])
         killed = await self.single_tm.terminal.terminate(True)
         assert killed
-        assert self.single_tm.terminal.ptyproc.terminated
         assert self.single_tm.terminal.ptyproc.closed
 
 class UniqueTermTests(TermTestCase):
