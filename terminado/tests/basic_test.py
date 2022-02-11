@@ -210,10 +210,10 @@ class NamedTermTests(TermTestCase):
         self.assertEqual(pids[2], pids[3])
         self.assertNotEqual(pids[0], pids[3])
 
-        # terminal = self.named_tm.terminals["1"]
-        # killed = await terminal.terminate(True)
-        # assert killed
-        # assert terminal.ptyproc.closed
+        terminal = self.named_tm.terminals["1"]
+        killed = await terminal.terminate(True)
+        assert killed
+        assert terminal.ptyproc.closed
 
     @tornado.testing.gen_test
     @pytest.mark.skipif('linux' not in platform, reason='It only works on Linux')
@@ -234,9 +234,9 @@ class SingleTermTests(TermTestCase):
         pids = await self.get_pids(tms)
         self.assertEqual(pids[0], pids[1])
 
-        # killed = await self.single_tm.terminal.terminate(True)
-        # assert killed
-        # assert self.single_tm.terminal.ptyproc.closed
+        killed = await self.single_tm.terminal.terminate(True)
+        assert killed
+        assert self.single_tm.terminal.ptyproc.closed
 
 class UniqueTermTests(TermTestCase):
     @tornado.testing.gen_test
