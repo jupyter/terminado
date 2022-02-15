@@ -100,18 +100,23 @@ class PtyWithClients(object):
         def sleep():
             return asyncio.sleep(self.ptyproc.delayafterterminate)
 
+        print('in terminate 1')
         if not self.ptyproc.isalive():
+            print('in terminate 2')
             return True
         try:
             for sig in signals:
+                print(f'in terminate 3: {sig}')
                 self.kill(sig)
                 await sleep()
                 if not self.ptyproc.isalive():
+                    print(f'in terminate 4: {sig}')
                     return True
             if force:
                 self.kill(signal.SIGKILL)
                 await sleep()
                 if not self.ptyproc.isalive():
+                    print(f'in terminate 5')
                     return True
                 else:
                     return False
@@ -123,6 +128,7 @@ class PtyWithClients(object):
             # Make one last attempt to see if the kernel is up to date.
             await sleep()
             if not self.ptyproc.isalive():
+                print(f'in terminate 6')
                 return True
             else:
                 return False

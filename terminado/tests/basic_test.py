@@ -213,6 +213,7 @@ class NamedTermTests(TermTestCase):
         terminal = self.named_tm.terminals["1"]
         killed = await terminal.terminate(True)
         assert killed
+        assert not terminal.ptyproc.isalive()
         assert terminal.ptyproc.closed
 
     @tornado.testing.gen_test
