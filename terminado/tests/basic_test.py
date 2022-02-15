@@ -214,7 +214,7 @@ class NamedTermTests(TermTestCase):
         killed = await terminal.terminate(True)
         assert killed
         assert not terminal.ptyproc.isalive()
-        assert terminal.ptyproc.pty.iseof()
+        assert terminal.ptyproc.flag_eof
         assert terminal.ptyproc.closed
 
     @tornado.testing.gen_test
