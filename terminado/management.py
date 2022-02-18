@@ -41,7 +41,7 @@ class PtyWithClients(object):
     def __init__(self, argv, env=[], cwd=None):
         self.clients = []
         # Use read_buffer to store historical messages for reconnection
-        self.read_buffer = deque([], maxlen=20)
+        self.read_buffer = deque([], maxlen=1000)
         kwargs = dict(argv=argv, env=env, cwd=cwd)
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
