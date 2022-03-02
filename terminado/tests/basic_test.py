@@ -214,7 +214,7 @@ class NamedTermTests(TermTestCase):
         killed = await terminal.terminate(True)
         assert killed
         assert not terminal.ptyproc.isalive()
-        assert terminal.ptyproc.flag_eof
+        await asyncio.sleep(1)
         assert terminal.ptyproc.closed
 
     @tornado.testing.gen_test
@@ -238,6 +238,7 @@ class SingleTermTests(TermTestCase):
 
         killed = await self.single_tm.terminal.terminate(True)
         assert killed
+        await asyncio.sleep(1)
         assert self.single_tm.terminal.ptyproc.closed
 
 class UniqueTermTests(TermTestCase):
