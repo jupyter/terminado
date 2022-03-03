@@ -8,11 +8,11 @@
 
 ### Bugs fixed
 
-- Update management.py [#143](https://github.com/jupyter/terminado/pull/143) ([@yusufbashi](https://github.com/yusufbashi))
+- Increase scrollback to 1000 [#143](https://github.com/jupyter/terminado/pull/143) ([@yusufbashi](https://github.com/yusufbashi))
 
 ### Maintenance and upkeep improvements
 
-- Add test for terminating the terminals [#142](https://github.com/jupyter/terminado/pull/142) ([@blink1073](https://github.com/blink1073))
+- Add test for terminating the terminals and fix Windows terminal shutdown behavior [#142](https://github.com/jupyter/terminado/pull/142) ([@blink1073](https://github.com/blink1073))
 
 ### Contributors to this release
 
