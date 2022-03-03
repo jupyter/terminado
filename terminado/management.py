@@ -103,23 +103,18 @@ class PtyWithClients(object):
         def sleep():
             return asyncio.sleep(self.ptyproc.delayafterterminate)
 
-        print('in terminate 1')
         if not self.ptyproc.isalive():
-            print('in terminate 2')
             return True
         try:
             for sig in signals:
-                print(f'in terminate 3: {sig}')
                 self.kill(sig)
                 await sleep()
                 if not self.ptyproc.isalive():
-                    print(f'in terminate 4: {sig}')
                     return True
             if force:
                 self.kill(signal.SIGKILL)
                 await sleep()
                 if not self.ptyproc.isalive():
-                    print(f'in terminate 5')
                     return True
                 else:
                     return False
@@ -131,7 +126,6 @@ class PtyWithClients(object):
             # Make one last attempt to see if the kernel is up to date.
             await sleep()
             if not self.ptyproc.isalive():
-                print(f'in terminate 6')
                 return True
             else:
                 return False
@@ -235,19 +229,15 @@ class TermManagerBase(object):
         # prevent blocking on fd
         if not _poll(fd, timeout=0.1):  # 100ms
             self.log.debug(f"Spurious pty_read() on fd {fd}")
-            print('spurious pty_read()')
             return
         ptywclients = self.ptys_by_fd[fd]
         try:
-            print('reading')
             self.pre_pty_read_hook(ptywclients)
             s = ptywclients.ptyproc.read(65536)
-            print('read')
             ptywclients.read_buffer.append(s)
             for client in ptywclients.clients:
                 client.on_pty_read(s)
         except EOFError:
-            print('got eof')
             self.on_eof(ptywclients)
             for client in ptywclients.clients:
                 client.on_pty_died()
