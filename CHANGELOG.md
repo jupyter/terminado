@@ -2,6 +2,26 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.13.2
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.13.1...9db93006a960bc90c3cc6b3f53b5cba1251b5071))
+
+### Bugs fixed
+
+- Update management.py [#143](https://github.com/jupyter/terminado/pull/143) ([@yusufbashi](https://github.com/yusufbashi))
+
+### Maintenance and upkeep improvements
+
+- Add test for terminating the terminals [#142](https://github.com/jupyter/terminado/pull/142) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-27&to=2022-03-03&type=c))
+
+[@andfoy](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aandfoy+updated%3A2022-01-27..2022-03-03&type=Issues) | [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-01-27..2022-03-03&type=Issues) | [@fcollonval](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Afcollonval+updated%3A2022-01-27..2022-03-03&type=Issues) | [@Wh1isper](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3AWh1isper+updated%3A2022-01-27..2022-03-03&type=Issues) | [@yusufbashi](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ayusufbashi+updated%3A2022-01-27..2022-03-03&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.13.1
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.13.0...b522de5796e56c98a74918873ff453f828fb123e))
@@ -15,8 +35,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-01-27&to=2022-01-27&type=c))
 
 [@minrk](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aminrk+updated%3A2022-01-27..2022-01-27&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.13.0
 
