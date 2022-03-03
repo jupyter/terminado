@@ -25,6 +25,7 @@ try:
 except ImportError:
     try:
         from winpty import PtyProcess as PtyProcessUnicode
+        from winpty.enums import Backend
     except ImportError:
         PtyProcessUnicode = object
     preexec_fn = None
@@ -45,6 +46,8 @@ class PtyWithClients(object):
         kwargs = dict(argv=argv, env=env, cwd=cwd)
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
+        if os.name == 'nt':
+            kwargs.setdefault('backend', Backend.WinPTY)
         self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
         # The output might not be strictly UTF-8 encoded, so
         # we replace the inner decoder of PtyProcessUnicode

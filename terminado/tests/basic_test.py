@@ -90,17 +90,9 @@ class TestTermClient(object):
         await self.write_stdin("echo $$\r")
         (stdout, extra) = await self.read_stdout()
         if os.name == 'nt':
-            print(repr(stdout))
-            match = re.search(r'echo \$\$\\x1b\[71X\\x1b\[71C\\r\\n(\d+)', repr(stdout))
-            if match is None:
-                match = re.search(r'echo \$\$ \\r\\n(\d+)', repr(stdout))
-            if match is None:
-                match = re.search(
-                    r'echo \$\$ \\r\\n\\x1b\[\?25h\\x1b\[\?25l(\d+)',
-                    repr(stdout))
+            match = re.search(r'echo \$\$\\.*?\\r\\n(\d+)', repr(stdout))
             pid = int(match.groups()[0])
         else:
-            print('stdout=%r, extra=%r' % (stdout, extra))
             pid = int(stdout.split('\n')[1])
         return pid
 
@@ -216,6 +208,12 @@ class NamedTermTests(TermTestCase):
         self.assertEqual(pids[2], pids[3])
         self.assertNotEqual(pids[0], pids[3])
 
+        terminal = self.named_tm.terminals["1"]
+        killed = await terminal.terminate(True)
+        assert killed
+        assert not terminal.ptyproc.isalive()
+        assert terminal.ptyproc.closed
+
     @tornado.testing.gen_test
     @pytest.mark.skipif('linux' not in platform, reason='It only works on Linux')
     async def test_max_terminals(self):
@@ -234,6 +232,10 @@ class SingleTermTests(TermTestCase):
         tms = await self.get_term_clients(["/single", "/single"])
         pids = await self.get_pids(tms)
         self.assertEqual(pids[0], pids[1])
+
+        killed = await self.single_tm.terminal.terminate(True)
+        assert killed
+        assert self.single_tm.terminal.ptyproc.closed
 
 class UniqueTermTests(TermTestCase):
     @tornado.testing.gen_test

@@ -1,11 +1,16 @@
 name: Tests
+
 on:
   push:
-    branches: "*"
+    branches: ["main"]
   pull_request:
-    branches: "*"
   schedule:    
     - cron: "0 8 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}-latest
