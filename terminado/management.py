@@ -231,16 +231,19 @@ class TermManagerBase(object):
         """Called by the event loop when there is pty data ready to read."""
         # prevent blocking on fd
         if not _poll(fd, timeout=0.1):  # 100ms
-            self.log.debug(f"Spurious pty_read() on fd {fd}")
+            self.log.info(f"Spurious pty_read() on fd {fd}")
             return
         ptywclients = self.ptys_by_fd[fd]
         try:
+            self.log.info('reading')
             self.pre_pty_read_hook(ptywclients)
             s = ptywclients.ptyproc.read(65536)
+            self.log.info('read')
             ptywclients.read_buffer.append(s)
             for client in ptywclients.clients:
                 client.on_pty_read(s)
         except EOFError:
+            self.log.info('got eof')
             self.on_eof(ptywclients)
             for client in ptywclients.clients:
                 client.on_pty_died()
