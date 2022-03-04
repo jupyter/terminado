@@ -47,7 +47,7 @@ class PtyWithClients(object):
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
         if os.name == 'nt':
-            kwargs.setdefault('backend', Backend.WinPTY)
+            kwargs.setdefault('backend', Backend.ConPTY)
         self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
         # The output might not be strictly UTF-8 encoded, so
         # we replace the inner decoder of PtyProcessUnicode
