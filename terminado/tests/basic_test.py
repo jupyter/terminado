@@ -158,7 +158,7 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
                     (r"/unique",      TermSocket, {'term_manager': self.unique_tm})
                 ], debug=True)
 
-    test_urls = ('/named/term1', '/unique') + (('/single',) if os.name != 'nt' else tuple())
+    test_urls = ('/named/term1', '/unique') + (('/single',) if os.name != 'nt' else ())
 
 class CommonTests(TermTestCase):
     @tornado.testing.gen_test
