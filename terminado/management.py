@@ -7,21 +7,21 @@
 from __future__ import absolute_import, print_function
 
 import asyncio
-from collections import deque
+import codecs
 import itertools
 import logging
 import os
-import signal
-import codecs
-import warnings
 import select
+import signal
+import warnings
+from collections import deque
 
 try:
     from ptyprocess import PtyProcessUnicode
 
-
     def preexec_fn():
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
 except ImportError:
     try:
         from winpty import PtyProcess as PtyProcessUnicode
@@ -50,7 +50,7 @@ class PtyWithClients(object):
         # The output might not be strictly UTF-8 encoded, so
         # we replace the inner decoder of PtyProcessUnicode
         # to allow non-strict decode.
-        self.ptyproc.decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+        self.ptyproc.decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
 
     def resize_to_smallest(self):
         """Set the terminal size to that of the smallest client dimensions.
@@ -80,21 +80,20 @@ class PtyWithClients(object):
 
     def killpg(self, sig=signal.SIGTERM):
         """Send a signal to the process group of the process in the pty"""
-        if os.name == 'nt':
+        if os.name == "nt":
             return self.ptyproc.kill(sig)
         pgid = os.getpgid(self.ptyproc.pid)
         os.killpg(pgid, sig)
 
     async def terminate(self, force=False):
-        '''This forces a child process to terminate. It starts nicely with
+        """This forces a child process to terminate. It starts nicely with
         SIGHUP and SIGINT. If "force" is True then moves onto SIGKILL. This
         returns True if the child was terminated. This returns False if the
-        child could not be terminated. '''
-        if os.name == 'nt':
+        child could not be terminated."""
+        if os.name == "nt":
             signals = [signal.SIGINT, signal.SIGTERM]
         else:
-            signals = [signal.SIGHUP, signal.SIGCONT, signal.SIGINT,
-                       signal.SIGTERM]
+            signals = [signal.SIGHUP, signal.SIGCONT, signal.SIGINT, signal.SIGTERM]
 
         loop = IOLoop.current()
 
@@ -130,8 +129,7 @@ class PtyWithClients(object):
 
 
 def _update_removing(target, changes):
-    """Like dict.update(), but remove keys where the value is None.
-    """
+    """Like dict.update(), but remove keys where the value is None."""
     for k, v in changes.items():
         if v is None:
             target.pop(k, None)
@@ -140,11 +138,12 @@ def _update_removing(target, changes):
 
 
 def _poll(fd, timeout: float = 0.1):
-    """Poll using poll() on posix systems and select() elsewhere (e.g., Windows)
-    """
+    """Poll using poll() on posix systems and select() elsewhere (e.g., Windows)"""
     if os.name == "posix":
         poller = select.poll()  # noqa: ignore missing method on Windows
-        poller.register(fd, select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR)  # read-only
+        poller.register(
+            fd, select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR
+        )  # read-only
         return poller.poll(timeout * 1000)  # milliseconds
     else:
         # poll() not supported on Windows
@@ -155,8 +154,7 @@ def _poll(fd, timeout: float = 0.1):
 class TermManagerBase(object):
     """Base class for a terminal manager."""
 
-    def __init__(self, shell_command, server_url="", term_settings={},
-                 extra_env=None, ioloop=None):
+    def __init__(self, shell_command, server_url="", term_settings={}, extra_env=None, ioloop=None):
         self.shell_command = shell_command
         self.server_url = server_url
         self.term_settings = term_settings
@@ -181,12 +179,12 @@ class TermManagerBase(object):
         dimensions = "%dx%d" % (width, height)
         if winwidth and winheight:
             dimensions += ";%dx%d" % (winwidth, winheight)
-        env[ENV_PREFIX+"DIMENSIONS"] = dimensions
+        env[ENV_PREFIX + "DIMENSIONS"] = dimensions
         env["COLUMNS"] = str(width)
         env["LINES"] = str(height)
 
         if self.server_url:
-            env[ENV_PREFIX+"URL"] = self.server_url
+            env[ENV_PREFIX + "URL"] = self.server_url
 
         if self.extra_env:
             _update_removing(env, self.extra_env)
@@ -196,11 +194,11 @@ class TermManagerBase(object):
     def new_terminal(self, **kwargs):
         """Make a new terminal, return a :class:`PtyWithClients` instance."""
         options = self.term_settings.copy()
-        options['shell_command'] = self.shell_command
+        options["shell_command"] = self.shell_command
         options.update(kwargs)
-        argv = options['shell_command']
+        argv = options["shell_command"]
         env = self.make_term_env(**options)
-        cwd = options.get('cwd', None)
+        cwd = options.get("cwd", None)
         return PtyWithClients(argv, env, cwd)
 
     def start_reading(self, ptywclients):
@@ -211,8 +209,7 @@ class TermManagerBase(object):
         loop.add_handler(fd, self.pty_read, loop.READ)
 
     def on_eof(self, ptywclients):
-        """Called when the pty has closed.
-        """
+        """Called when the pty has closed."""
         # Stop trying to read from that terminal
         fd = ptywclients.ptyproc.fd
         self.log.info("EOF on FD %d; stopping reading", fd)
@@ -253,8 +250,7 @@ class TermManagerBase(object):
         raise NotImplementedError
 
     def client_disconnected(self, websocket):
-        """Override this to e.g. kill terminals on client disconnection.
-        """
+        """Override this to e.g. kill terminals on client disconnection."""
         pass
 
     async def shutdown(self):
@@ -314,7 +310,7 @@ class UniqueTermManager(TermManagerBase):
         """Send terminal SIGHUP when client disconnects."""
         self.log.info("Websocket closed, sending SIGHUP to terminal.")
         if websocket.terminal:
-            if os.name == 'nt':
+            if os.name == "nt":
                 websocket.terminal.kill()
                 # Immediately call the pty reader to process
                 # the eof and free up space
@@ -324,8 +320,7 @@ class UniqueTermManager(TermManagerBase):
 
 
 class NamedTermManager(TermManagerBase):
-    """Share terminals between websockets connected to the same endpoint.
-    """
+    """Share terminals between websockets connected to the same endpoint."""
 
     def __init__(self, max_terminals=None, **kwargs):
         super(NamedTermManager, self).__init__(**kwargs)
@@ -358,8 +353,8 @@ class NamedTermManager(TermManagerBase):
                 return name
 
     def new_named_terminal(self, **kwargs):
-        if 'name' in kwargs:
-            name = kwargs['name']
+        if "name" in kwargs:
+            name = kwargs["name"]
         else:
             name = self._next_available_name()
         term = self.new_terminal(**kwargs)
@@ -371,7 +366,7 @@ class NamedTermManager(TermManagerBase):
 
     def kill(self, name, sig=signal.SIGTERM):
         term = self.terminals[name]
-        term.kill(sig)   # This should lead to an EOF
+        term.kill(sig)  # This should lead to an EOF
 
     async def terminate(self, name, force=False):
         term = self.terminals[name]

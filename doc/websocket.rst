@@ -26,7 +26,7 @@ Now, a page in your application can connect to ``ws://<host>/websocket``. Using
    to it can run commands on your server. It is up to you to integrate the
    handler with whatever authentication system your application uses. For
    instance, in IPython, we subclass it like this::
-   
+
        class TermSocket(terminado.TermSocket, IPythonHandler):
            def get(self, *args, **kwargs):
                if not self.get_current_user():

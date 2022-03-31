@@ -7,7 +7,7 @@ application::
 
     from terminado import uimodule
     # ...
-    
+
     app = tornado.web.Application(...
         ui_modules = {'Terminal': uimodule.Terminal},
     )
