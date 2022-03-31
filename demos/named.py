@@ -2,11 +2,6 @@
 
 Plus a /new URL which will create a new terminal and redirect to it.
 """
-from __future__ import absolute_import, print_function
-
-import logging
-import os.path
-import sys
 
 import tornado.web
 

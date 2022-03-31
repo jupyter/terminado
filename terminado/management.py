@@ -4,7 +4,6 @@
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
 
-from __future__ import absolute_import, print_function
 
 import asyncio
 import codecs
@@ -25,7 +24,6 @@ try:
 except ImportError:
     try:
         from winpty import PtyProcess as PtyProcessUnicode
-        from winpty.enums import Backend
     except ImportError:
         PtyProcessUnicode = object
     preexec_fn = None
@@ -38,12 +36,12 @@ ENV_PREFIX = "PYXTERM_"  # Environment variable prefix
 DEFAULT_TERM_TYPE = "xterm-256color"
 
 
-class PtyWithClients(object):
-    def __init__(self, argv, env=[], cwd=None):
+class PtyWithClients:
+    def __init__(self, argv, env=None, cwd=None):
         self.clients = []
         # Use read_buffer to store historical messages for reconnection
         self.read_buffer = deque([], maxlen=1000)
-        kwargs = dict(argv=argv, env=env, cwd=cwd)
+        kwargs = dict(argv=argv, env=env or [], cwd=cwd)
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
         self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
@@ -95,7 +93,7 @@ class PtyWithClients(object):
         else:
             signals = [signal.SIGHUP, signal.SIGCONT, signal.SIGINT, signal.SIGTERM]
 
-        loop = IOLoop.current()
+        _ = IOLoop.current()
 
         def sleep():
             return asyncio.sleep(self.ptyproc.delayafterterminate)
@@ -151,13 +149,15 @@ def _poll(fd, timeout: float = 0.1):
         return r
 
 
-class TermManagerBase(object):
+class TermManagerBase:
     """Base class for a terminal manager."""
 
-    def __init__(self, shell_command, server_url="", term_settings={}, extra_env=None, ioloop=None):
+    def __init__(
+        self, shell_command, server_url="", term_settings=None, extra_env=None, ioloop=None
+    ):
         self.shell_command = shell_command
         self.server_url = server_url
-        self.term_settings = term_settings
+        self.term_settings = term_settings or {}
         self.extra_env = extra_env
         self.log = logging.getLogger(__name__)
 
@@ -269,7 +269,7 @@ class SingleTermManager(TermManagerBase):
     """All connections to the websocket share a common terminal."""
 
     def __init__(self, **kwargs):
-        super(SingleTermManager, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.terminal = None
 
     def get_terminal(self, url_component=None):
@@ -295,7 +295,7 @@ class UniqueTermManager(TermManagerBase):
     """Give each websocket a unique terminal to use."""
 
     def __init__(self, max_terminals=None, **kwargs):
-        super(UniqueTermManager, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.max_terminals = max_terminals
 
     def get_terminal(self, url_component=None):
@@ -323,7 +323,7 @@ class NamedTermManager(TermManagerBase):
     """Share terminals between websockets connected to the same endpoint."""
 
     def __init__(self, max_terminals=None, **kwargs):
-        super(NamedTermManager, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.max_terminals = max_terminals
         self.terminals = {}
 
@@ -373,7 +373,7 @@ class NamedTermManager(TermManagerBase):
         await term.terminate(force=force)
 
     def on_eof(self, ptywclients):
-        super(NamedTermManager, self).on_eof(ptywclients)
+        super().on_eof(ptywclients)
         name = ptywclients.term_name
         self.log.info("Terminal %s closed", name)
         self.terminals.pop(name, None)

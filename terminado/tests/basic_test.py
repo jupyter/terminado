@@ -4,7 +4,6 @@
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
 
-from __future__ import absolute_import, print_function
 
 import asyncio
 import datetime
@@ -22,10 +21,9 @@ import pytest
 import tornado
 import tornado.httpserver
 import tornado.testing
-from tornado.httpclient import HTTPError
 from tornado.ioloop import IOLoop
 
-from terminado import *
+from terminado import NamedTermManager, SingleTermManager, TermSocket, UniqueTermManager
 
 if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -40,7 +38,7 @@ os.environ["ASYNC_TEST_TIMEOUT"] = "20"  # Global test case timeout
 MAX_TERMS = 3  # Testing thresholds
 
 
-class TestTermClient(object):
+class TestTermClient:
     """Test connection to a terminal manager"""
 
     __test__ = False
@@ -233,7 +231,7 @@ class NamedTermTests(TermTestCase):
     async def test_max_terminals(self):
         urls = ["/named/%d" % i for i in range(MAX_TERMS + 1)]
         tms = await self.get_term_clients(urls[:MAX_TERMS])
-        pids = await self.get_pids(tms)
+        _ = await self.get_pids(tms)
 
         # MAX_TERMS+1 should fail
         tm = await self.get_term_client(urls[MAX_TERMS])
