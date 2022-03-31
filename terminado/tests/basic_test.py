@@ -6,24 +6,28 @@
 
 from __future__ import absolute_import, print_function
 
-import unittest
-from terminado import *
-import tornado
-import tornado.httpserver
-from tornado.httpclient import HTTPError
-from tornado.ioloop import IOLoop
-import tornado.testing
+import asyncio
 import datetime
 import json
 import os
 import re
-import pytest
-from sys import platform
 
 # We must set the policy for python >=3.8, see https://www.tornadoweb.org/en/stable/#installation
 # Snippet from https://github.com/tornadoweb/tornado/issues/2608#issuecomment-619524992
-import sys, asyncio
-if sys.version_info[0]==3 and sys.version_info[1] >= 8 and sys.platform.startswith('win'):
+import sys
+import unittest
+from sys import platform
+
+import pytest
+import tornado
+import tornado.httpserver
+import tornado.testing
+from tornado.httpclient import HTTPError
+from tornado.ioloop import IOLoop
+
+from terminado import *
+
+if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 #
@@ -31,12 +35,14 @@ if sys.version_info[0]==3 and sys.version_info[1] >= 8 and sys.platform.startswi
 # from the sever.
 #
 DONE_TIMEOUT = 1.0
-os.environ['ASYNC_TEST_TIMEOUT'] = "20"     # Global test case timeout
+os.environ["ASYNC_TEST_TIMEOUT"] = "20"  # Global test case timeout
 
-MAX_TERMS = 3                               # Testing thresholds
+MAX_TERMS = 3  # Testing thresholds
+
 
 class TestTermClient(object):
     """Test connection to a terminal manager"""
+
     __test__ = False
 
     def __init__(self, websocket):
@@ -74,30 +80,31 @@ class TestTermClient(object):
 
     async def read_stdout(self, timeout=DONE_TIMEOUT):
         """Read standard output until timeout read reached,
-           return stdout and any non-stdout msgs received."""
+        return stdout and any non-stdout msgs received."""
         msglist = await self.read_all_msg(timeout)
-        stdout = "".join([msg[1] for msg in msglist if msg[0] == 'stdout'])
-        othermsg = [msg for msg in msglist if msg[0] != 'stdout']
+        stdout = "".join([msg[1] for msg in msglist if msg[0] == "stdout"])
+        othermsg = [msg for msg in msglist if msg[0] != "stdout"]
         return (stdout, othermsg)
 
     async def write_stdin(self, data):
         """Write to terminal stdin"""
-        await self.write_msg(['stdin', data])
+        await self.write_msg(["stdin", data])
 
     async def get_pid(self):
         """Get process ID of terminal shell process"""
-        await self.read_stdout()                          # Clear out any pending
+        await self.read_stdout()  # Clear out any pending
         await self.write_stdin("echo $$\r")
         (stdout, extra) = await self.read_stdout()
-        if os.name == 'nt':
-            match = re.search(r'echo \$\$\\.*?\\r\\n(\d+)', repr(stdout))
+        if os.name == "nt":
+            match = re.search(r"echo \$\$\\.*?\\r\\n(\d+)", repr(stdout))
             pid = int(match.groups()[0])
         else:
-            pid = int(stdout.split('\n')[1])
+            pid = int(stdout.split("\n")[1])
         return pid
 
     def close(self):
         self.ws.close()
+
 
 class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
@@ -105,9 +112,10 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
     # See:  https://github.com/tornadoweb/tornado/issues/1161
     async def get_term_client(self, path):
         port = self.get_http_port()
-        url = 'ws://127.0.0.1:%d%s' % (port, path)
-        request = tornado.httpclient.HTTPRequest(url,
-                    headers={'Origin' : 'http://127.0.0.1:%d' % port})
+        url = "ws://127.0.0.1:%d%s" % (port, path)
+        request = tornado.httpclient.HTTPRequest(
+            url, headers={"Origin": "http://127.0.0.1:%d" % port}
+        )
 
         ws = await tornado.websocket.websocket_connect(request)
         return TestTermClient(ws)
@@ -117,7 +125,7 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
     async def get_pids(self, tm_list):
         pids = []
-        for tm in tm_list: # Must be sequential, in case terms are shared
+        for tm in tm_list:  # Must be sequential, in case terms are shared
             pid = await tm.get_pid()
             pids.append(pid)
 
@@ -132,33 +140,38 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
     def get_app(self):
         self.named_tm = NamedTermManager(
-            shell_command=['bash'],
+            shell_command=["bash"],
             max_terminals=MAX_TERMS,
         )
-        
-        self.single_tm = SingleTermManager(shell_command=['bash'])
-        
+
+        self.single_tm = SingleTermManager(shell_command=["bash"])
+
         self.unique_tm = UniqueTermManager(
-            shell_command=['bash'],
+            shell_command=["bash"],
             max_terminals=MAX_TERMS,
         )
 
         named_tm = self.named_tm
-        
+
         class NewTerminalHandler(tornado.web.RequestHandler):
             """Create a new named terminal, return redirect"""
+
             def get(self):
                 name, terminal = named_tm.new_named_terminal()
                 self.redirect("/named/" + name, permanent=False)
 
-        return tornado.web.Application([
-                    (r"/new",         NewTerminalHandler),
-                    (r"/named/(\w+)", TermSocket, {'term_manager': self.named_tm}),
-                    (r"/single",      TermSocket, {'term_manager': self.single_tm}),
-                    (r"/unique",      TermSocket, {'term_manager': self.unique_tm})
-                ], debug=True)
+        return tornado.web.Application(
+            [
+                (r"/new", NewTerminalHandler),
+                (r"/named/(\w+)", TermSocket, {"term_manager": self.named_tm}),
+                (r"/single", TermSocket, {"term_manager": self.single_tm}),
+                (r"/unique", TermSocket, {"term_manager": self.unique_tm}),
+            ],
+            debug=True,
+        )
 
-    test_urls = ('/named/term1', '/unique') + (('/single',) if os.name != 'nt' else ())
+    test_urls = ("/named/term1", "/unique") + (("/single",) if os.name != "nt" else ())
+
 
 class CommonTests(TermTestCase):
     @tornado.testing.gen_test
@@ -166,11 +179,11 @@ class CommonTests(TermTestCase):
         for url in self.test_urls:
             tm = await self.get_term_client(url)
             response = await tm.read_msg()
-            self.assertEqual(response, ['setup', {}])
+            self.assertEqual(response, ["setup", {}])
 
             # Check for initial shell prompt
             response = await tm.read_msg()
-            self.assertEqual(response[0], 'stdout')
+            self.assertEqual(response[0], "stdout")
             self.assertGreater(len(response[1]), 0)
             tm.close()
 
@@ -181,12 +194,13 @@ class CommonTests(TermTestCase):
             await tm.read_all_msg()
             await tm.write_stdin("whoami\n")
             (stdout, other) = await tm.read_stdout()
-            if os.name == 'nt':
-                assert 'whoami' in stdout
+            if os.name == "nt":
+                assert "whoami" in stdout
             else:
-                assert stdout.startswith('who')
+                assert stdout.startswith("who")
             assert other == []
             tm.close()
+
 
 class NamedTermTests(TermTestCase):
     def test_new(self):
@@ -195,12 +209,12 @@ class NamedTermTests(TermTestCase):
         url = response.headers["Location"]
 
         # Check that the new terminal was created
-        name = url.split('/')[2]
+        name = url.split("/")[2]
         self.assertIn(name, self.named_tm.terminals)
 
     @tornado.testing.gen_test
     async def test_namespace(self):
-        names = ["/named/1"]*2 + ["/named/2"]*2
+        names = ["/named/1"] * 2 + ["/named/2"] * 2
         tms = await self.get_term_clients(names)
         pids = await self.get_pids(tms)
 
@@ -215,16 +229,17 @@ class NamedTermTests(TermTestCase):
         assert terminal.ptyproc.closed
 
     @tornado.testing.gen_test
-    @pytest.mark.skipif('linux' not in platform, reason='It only works on Linux')
+    @pytest.mark.skipif("linux" not in platform, reason="It only works on Linux")
     async def test_max_terminals(self):
-        urls = ["/named/%d" % i for i in range(MAX_TERMS+1)]
+        urls = ["/named/%d" % i for i in range(MAX_TERMS + 1)]
         tms = await self.get_term_clients(urls[:MAX_TERMS])
         pids = await self.get_pids(tms)
 
         # MAX_TERMS+1 should fail
         tm = await self.get_term_client(urls[MAX_TERMS])
         msg = await tm.read_msg()
-        self.assertEqual(msg, None)             # Connection closed
+        self.assertEqual(msg, None)  # Connection closed
+
 
 class SingleTermTests(TermTestCase):
     @tornado.testing.gen_test
@@ -237,6 +252,7 @@ class SingleTermTests(TermTestCase):
         assert killed
         assert self.single_tm.terminal.ptyproc.closed
 
+
 class UniqueTermTests(TermTestCase):
     @tornado.testing.gen_test
     async def test_unique_processes(self):
@@ -245,26 +261,27 @@ class UniqueTermTests(TermTestCase):
         self.assertNotEqual(pids[0], pids[1])
 
     @tornado.testing.gen_test
-    @pytest.mark.skipif('linux' not in platform, reason='It only works on Linux')
+    @pytest.mark.skipif("linux" not in platform, reason="It only works on Linux")
     async def test_max_terminals(self):
-        tms = await self.get_term_clients(['/unique'] * MAX_TERMS)
+        tms = await self.get_term_clients(["/unique"] * MAX_TERMS)
         pids = await self.get_pids(tms)
-        self.assertEqual(len(set(pids)), MAX_TERMS)        # All PIDs unique
+        self.assertEqual(len(set(pids)), MAX_TERMS)  # All PIDs unique
 
         # MAX_TERMS+1 should fail
         tm = await self.get_term_client("/unique")
         msg = await tm.read_msg()
-        self.assertEqual(msg, None)             # Connection closed
+        self.assertEqual(msg, None)  # Connection closed
 
         # Close one
         tms[0].close()
-        msg = await tms[0].read_msg()           # Closed
+        msg = await tms[0].read_msg()  # Closed
         self.assertEqual(msg, None)
 
         # Should be able to open back up to MAX_TERMS
         tm = await self.get_term_client("/unique")
         msg = await tm.read_msg()
-        self.assertEqual(msg[0], 'setup')
+        self.assertEqual(msg[0], "setup")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

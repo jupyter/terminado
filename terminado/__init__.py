@@ -4,12 +4,17 @@
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
 
-from .websocket import TermSocket
-from .management import (TermManagerBase, SingleTermManager,
-                         UniqueTermManager, NamedTermManager)
-
 import logging
+
+from .management import (
+    NamedTermManager,
+    SingleTermManager,
+    TermManagerBase,
+    UniqueTermManager,
+)
+from .websocket import TermSocket
+
 # Prevent a warning about no attached handlers in Python 2
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-__version__ = '0.13.3'
+__version__ = "0.13.3"

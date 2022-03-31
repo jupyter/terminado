@@ -22,7 +22,7 @@ import tornado.websocket
 
 def _cast_unicode(s):
     if isinstance(s, bytes):
-        return s.decode('utf-8')
+        return s.decode("utf-8")
     return s
 
 
@@ -36,14 +36,14 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal = None
 
         self._logger = logging.getLogger(__name__)
-        self._user_command = ''
+        self._user_command = ""
 
         # Enable if the environment variable LOG_TERMINAL_OUTPUT is "true"
-        self._enable_output_logging = (str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true")
+        self._enable_output_logging = str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true"
 
     def origin_check(self, origin=None):
         """Deprecated: backward-compat for terminado <= 0.5."""
-        return self.check_origin(origin or self.request.headers.get('Origin'))
+        return self.check_origin(origin or self.request.headers.get("Origin"))
 
     def open(self, url_component=None):
         """Websocket connection opened.
@@ -58,7 +58,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self._logger.info("TermSocket.open: %s", url_component)
 
         url_component = _cast_unicode(url_component)
-        self.term_name = url_component or 'tty'
+        self.term_name = url_component or "tty"
         self.terminal = self.term_manager.get_terminal(url_component)
         self.terminal.clients.append(self)
         self.send_json_message(["setup", {}])
@@ -76,7 +76,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def on_pty_read(self, text):
         """Data read from pty; send to frontend"""
-        self.send_json_message(['stdout', text])
+        self.send_json_message(["stdout", text])
 
     def send_json_message(self, content):
         json_msg = json.dumps(content)
@@ -84,7 +84,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
         if self._enable_output_logging:
             if content[0] == "stdout" and isinstance(content[1], str):
-                self.log_terminal_output(f'STDOUT: {content[1]}')
+                self.log_terminal_output(f"STDOUT: {content[1]}")
 
     def on_message(self, message):
         """Handle incoming websocket message
@@ -99,9 +99,9 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if msg_type == "stdin":
             self.terminal.ptyproc.write(command[1])
             if self._enable_output_logging:
-                if command[1] == '\r':
-                    self.log_terminal_output(f'STDIN: {self._user_command}')
-                    self._user_command = ''
+                if command[1] == "\r":
+                    self.log_terminal_output(f"STDIN: {self._user_command}")
+                    self._user_command = ""
                 else:
                     self._user_command += command[1]
         elif msg_type == "set_size":
@@ -121,13 +121,12 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.term_manager.client_disconnected(self)
 
     def on_pty_died(self):
-        """Terminal closed: tell the frontend, and close the socket.
-        """
-        self.send_json_message(['disconnect', 1])
+        """Terminal closed: tell the frontend, and close the socket."""
+        self.send_json_message(["disconnect", 1])
         self.close()
         self.terminal = None
 
-    def log_terminal_output(self, log: str = ''):
+    def log_terminal_output(self, log: str = ""):
         """
         Logs the terminal input/output
         :param log: log line to write
