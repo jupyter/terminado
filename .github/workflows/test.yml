@@ -38,4 +38,4 @@ jobs:
           pip check
       - name: Run the tests
         run: |
-          pytest -vv || pytest -vv --lf
+          python -m pytest -vv || python -m pytest -vv --lf
