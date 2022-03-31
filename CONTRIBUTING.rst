@@ -5,7 +5,7 @@ If you're reading this section, you're probably interested in contributing to
 Jupyter.  Welcome and thanks for your interest in contributing!
 
 Please take a look at the Contributor documentation, familiarize yourself with
-using the Jupyter Server, and introduce yourself on the mailing list and
+using the ``terminado``, and introduce yourself on the mailing list and
 share what area of the project you are interested in working on.
 
 For general documentation about contributing to Jupyter projects, see the
@@ -26,7 +26,7 @@ Run the the following steps to set up a local development environment::
     cd terminado
     pip install -e ".[test]"
 
-If you are using a system-wide Python installation and you only want to install the server for you,
+If you are using a system-wide Python installation and you only want to installed for you,
 you can add ``--user`` to the install commands.
 
 
