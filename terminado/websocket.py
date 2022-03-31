@@ -4,18 +4,10 @@
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
 
-from __future__ import absolute_import, print_function
-
-# Python3-friendly imports
-import os
-
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
 
 import json
 import logging
+import os
 
 import tornado.websocket
 
@@ -53,7 +45,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         """
         # Jupyter has a mixin to ping websockets and keep connections through
         # proxies alive. Call super() to allow that to set up:
-        super(TermSocket, self).open(url_component)
+        super().open(url_component)
 
         self._logger.info("TermSocket.open: %s", url_component)
 
@@ -92,7 +84,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         We send JSON arrays, where the first element is a string indicating
         what kind of message this is. Data associated with the message follows.
         """
-        ##logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
+        # logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
         command = json.loads(message)
         msg_type = command[0]
 
