@@ -7,4 +7,5 @@ include terminado/_static/terminado.js
 prune demos
 prune doc
 exclude .pre-commit-config.yaml
+exclude .git-blame-ignore-revs
 exclude CONTRIBUTING.rst
