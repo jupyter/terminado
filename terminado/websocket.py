@@ -87,7 +87,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         # logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
         command = json.loads(message)
         msg_type = command[0]
-
+        assert self.terminal is not None
         if msg_type == "stdin":
             self.terminal.ptyproc.write(command[1])
             if self._enable_output_logging:
@@ -118,7 +118,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.close()
         self.terminal = None
 
-    def log_terminal_output(self, log: str = ""):
+    def log_terminal_output(self, log: str = "") -> None:
         """
         Logs the terminal input/output
         :param log: log line to write

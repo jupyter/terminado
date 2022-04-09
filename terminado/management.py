@@ -26,7 +26,7 @@ except ImportError:
         from winpty import PtyProcess as PtyProcessUnicode
     except ImportError:
         PtyProcessUnicode = object
-    preexec_fn = None
+    preexec_fn = None  # type:ignore[assignment]
 
 from tornado.ioloop import IOLoop
 
@@ -40,7 +40,7 @@ class PtyWithClients:
     def __init__(self, argv, env=None, cwd=None):
         self.clients = []
         # Use read_buffer to store historical messages for reconnection
-        self.read_buffer = deque([], maxlen=1000)
+        self.read_buffer: deque[list] = deque([], maxlen=1000)
         kwargs = dict(argv=argv, env=env or [], cwd=cwd)
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
@@ -135,7 +135,7 @@ def _update_removing(target, changes):
             target[k] = v
 
 
-def _poll(fd, timeout: float = 0.1):
+def _poll(fd: int, timeout: float = 0.1) -> list:
     """Poll using poll() on posix systems and select() elsewhere (e.g., Windows)"""
     if os.name == "posix":
         poller = select.poll()  # noqa: ignore missing method on Windows
