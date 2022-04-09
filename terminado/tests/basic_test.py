@@ -62,7 +62,7 @@ class TestTermClient:
 
     async def read_all_msg(self, timeout=DONE_TIMEOUT):
         """Read messages until read times out"""
-        msglist = []
+        msglist: list = []
         delta = datetime.timedelta(seconds=timeout)
         while True:
             try:
@@ -95,6 +95,7 @@ class TestTermClient:
         (stdout, extra) = await self.read_stdout()
         if os.name == "nt":
             match = re.search(r"echo \$\$\\.*?\\r\\n(\d+)", repr(stdout))
+            assert match is not None
             pid = int(match.groups()[0])
         else:
             pid = int(stdout.split("\n")[1])
@@ -246,6 +247,7 @@ class SingleTermTests(TermTestCase):
         pids = await self.get_pids(tms)
         self.assertEqual(pids[0], pids[1])
 
+        assert self.single_tm.terminal is not None
         killed = await self.single_tm.terminal.terminate(True)
         assert killed
         assert self.single_tm.terminal.ptyproc.closed
