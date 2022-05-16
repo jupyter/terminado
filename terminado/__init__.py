@@ -10,4 +10,4 @@ from .management import TermManagerBase  # noqa
 from .management import UniqueTermManager  # noqa
 from .websocket import TermSocket  # noqa
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
