@@ -2,6 +2,12 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.15.0
+
+No merged PRs
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.13.3
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.13.2...2cccad61af7e7ec88e4db769664d8814985179d4))
@@ -15,8 +21,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-03-03&to=2022-03-07&type=c))
 
 [@andfoy](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aandfoy+updated%3A2022-03-03..2022-03-07&type=Issues) | [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-03-03..2022-03-07&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.13.2
 
