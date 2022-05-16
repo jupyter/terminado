@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "terminado"
-version = "0.13.3"
+version = "0.14.0"
 license = { file = "LICENSE" }
 description = "Tornado websocket backend for the Xterm.js Javascript terminal emulator library."
 classifiers = [ "Environment :: Web Environment", "License :: OSI Approved :: BSD License", "Programming Language :: Python :: 3", "Topic :: Terminals :: Terminal Emulators/X Terminals",]
@@ -29,7 +29,7 @@ test = [ "pytest>=6.0", "pre-commit", "pytest-timeout",]
 skip = ["check-links"]
 
 [tool.tbump.version]
-current = "0.13.3"
+current = "0.14.0"
 regex = '''
   (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)
   ((?P<channel>a|b|rc|.dev)(?P<release>\d+))?
