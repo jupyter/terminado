@@ -189,6 +189,10 @@ class TermManagerBase:
         if self.extra_env:
             _update_removing(env, self.extra_env)
 
+        term_env = kwargs.get("extra_env", {})
+        if term_env and isinstance(term_env, dict):
+            _update_removing(env, term_env)
+
         return env
 
     def new_terminal(self, **kwargs):
