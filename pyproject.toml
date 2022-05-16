@@ -1,15 +1,15 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling>=0.25"]
+build-backend = "hatchling.build"
 
 [project]
 name = "terminado"
+version = "0.13.3"
 license = { file = "LICENSE" }
 description = "Tornado websocket backend for the Xterm.js Javascript terminal emulator library."
 classifiers = [ "Environment :: Web Environment", "License :: OSI Approved :: BSD License", "Programming Language :: Python :: 3", "Topic :: Terminals :: Terminal Emulators/X Terminals",]
 requires-python = ">=3.7"
 dependencies = [ "ptyprocess;os_name!='nt'", "pywinpty>=1.1.0;os_name=='nt'", "tornado>=6.1.0",]
-dynamic = [ "version",]
 
 [[project.authors]]
 name = "Jupyter Development Team"
@@ -41,6 +41,9 @@ tag_template = "v{new_version}"
 
 [[tool.tbump.file]]
 src = "terminado/__init__.py"
+
+[[tool.tbump.file]]
+src = "pyproject.toml"
 
 [tool.pytest.ini_options]
 addopts = "-raXs --durations 10 --color=yes --doctest-modules"
