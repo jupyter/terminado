@@ -18,7 +18,7 @@ function make_terminal(element, size, ws_url) {
         size.cols,
         window.innerHeight,
         window.innerWidth,
-      ])
+      ]),
     );
     term.on("data", function (data) {
       ws.send(JSON.stringify(["stdin", data]));
