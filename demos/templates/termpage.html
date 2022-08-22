@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <title>pyxterm</title>
@@ -40,11 +40,11 @@
       function calculate_size(element) {
         var rows = Math.max(
           2,
-          Math.floor(element.innerHeight / termRowHeight) - 1
+          Math.floor(element.innerHeight / termRowHeight) - 1,
         );
         var cols = Math.max(
           3,
-          Math.floor(element.innerWidth / termColWidth) - 1
+          Math.floor(element.innerWidth / termColWidth) - 1,
         );
         console.log(
           "resize:",
@@ -53,7 +53,7 @@
           element.innerHeight,
           element.innerWidth,
           rows,
-          cols
+          cols,
         );
         return { rows: rows, cols: cols };
       }
@@ -71,7 +71,7 @@
             geom.cols,
             window.innerHeight,
             window.innerWidth,
-          ])
+          ]),
         );
       };
     };

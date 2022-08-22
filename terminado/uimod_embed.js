@@ -17,5 +17,5 @@ window.addEventListener(
       make_terminal(container, { rows: rows, cols: cols }, ws_url);
     }
   },
-  false
+  false,
 );
