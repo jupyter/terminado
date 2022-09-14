@@ -4,12 +4,13 @@
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
 
-
 import json
 import logging
 import os
 
+from tornado import gen
 import tornado.websocket
+from tornado.concurrent import run_on_executor
 
 
 def _cast_unicode(s):
@@ -26,12 +27,14 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.term_name = ""
         self.size = (None, None)
         self.terminal = None
+        self._blocking_io_executor = term_manager.blocking_io_executor
 
         self._logger = logging.getLogger(__name__)
         self._user_command = ""
 
         # Enable if the environment variable LOG_TERMINAL_OUTPUT is "true"
-        self._enable_output_logging = str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true"
+        self._enable_output_logging = str.lower(
+            os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true"
 
     def origin_check(self, origin=None):
         """Deprecated: backward-compat for terminado <= 0.5."""
@@ -78,6 +81,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             if content[0] == "stdout" and isinstance(content[1], str):
                 self.log_terminal_output(f"STDOUT: {content[1]}")
 
+    @gen.coroutine
     def on_message(self, message):
         """Handle incoming websocket message
 
@@ -89,7 +93,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         msg_type = command[0]
         assert self.terminal is not None
         if msg_type == "stdin":
-            self.terminal.ptyproc.write(command[1])
+            yield self.stdin_to_ptyproc(command[1])
             if self._enable_output_logging:
                 if command[1] == "\r":
                     self.log_terminal_output(f"STDIN: {self._user_command}")
@@ -125,3 +129,14 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         :return:
         """
         self._logger.debug(log)
+
+    @run_on_executor(executor='_blocking_io_executor')
+    def stdin_to_ptyproc(self, text):
+        """Handles stdin messages sent on the websocket.
+
+        This is a blocking call that should NOT be performed inside the
+        server primary event loop thread. Messages must be handled
+        asynchronously to prevent blocking on the PTY buffer.
+        """
+        if self.terminal is not None:
+            self.terminal.ptyproc.write(text)
