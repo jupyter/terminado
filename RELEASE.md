@@ -4,14 +4,13 @@ To create a manual release, update the version number in `terminado/__init__.py`
 
 ```
 git clean -dffx
-python setup.py sdist
-python setup.py bdist_wheel
-export script_version=`python setup.py --version 2>/dev/null`
+pip install pipx
+pipx run build
+export script_version=`pipx run hatch version 2>/dev/null`
 git commit -a -m "Release $script_version"
 git tag $script_version
 git push --all
 git push --tags
-pip install twine
-twine check dist/*
-twine upload dist/*
+pipx run twine check dist/*
+pipx run twine upload dist/*
 ```

@@ -11,10 +11,6 @@ concurrency:
 jobs:
   check_release:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        group: [check_release, link_check]
-      fail-fast: false
     steps:
       - uses: actions/checkout@v2
       - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
@@ -26,6 +22,3 @@ jobs:
         uses: jupyter-server/jupyter_releaser/.github/actions/check-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run Link Check
-        if: ${{ matrix.group == 'link_check' }}
-        uses: jupyter-server/jupyter_releaser/.github/actions/check-links@v1
