@@ -1,7 +1,8 @@
 """Using a custom thread pool for subprocess writes.
 """
-import tornado.web
 from concurrent import futures
+
+import tornado.web
 
 # This demo requires tornado_xstatic and XStatic-term.js
 import tornado_xstatic
@@ -11,7 +12,6 @@ from terminado import SingleTermManager, TermSocket
 
 
 class TerminalPageHandler(tornado.web.RequestHandler):
-
     def get(self):
         return self.render(
             "termpage.html",
@@ -23,16 +23,11 @@ class TerminalPageHandler(tornado.web.RequestHandler):
 
 def main(argv):
     with futures.ThreadPoolExecutor(max_workers=2) as custom_exec:
-        term_manager = SingleTermManager(shell_command=["bash"],
-                                         blocking_io_executor=custom_exec)
+        term_manager = SingleTermManager(shell_command=["bash"], blocking_io_executor=custom_exec)
         handlers = [
-            (r"/websocket", TermSocket, {
-                "term_manager": term_manager
-            }),
+            (r"/websocket", TermSocket, {"term_manager": term_manager}),
             (r"/", TerminalPageHandler),
-            (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler, {
-                "allowed_modules": ["termjs"]
-            }),
+            (r"/xstatic/(.*)", tornado_xstatic.XStaticFileHandler, {"allowed_modules": ["termjs"]}),
         ]
         app = tornado.web.Application(
             handlers,

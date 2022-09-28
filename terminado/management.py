@@ -38,7 +38,6 @@ DEFAULT_TERM_TYPE = "xterm-256color"
 
 
 class PtyWithClients:
-
     def __init__(self, argv, env=None, cwd=None):
         self.clients = []
         # Use read_buffer to store historical messages for reconnection
@@ -154,13 +153,15 @@ def _poll(fd: int, timeout: float = 0.1) -> list:
 class TermManagerBase:
     """Base class for a terminal manager."""
 
-    def __init__(self,
-                 shell_command,
-                 server_url="",
-                 term_settings=None,
-                 extra_env=None,
-                 ioloop=None,
-                 blocking_io_executor=None):
+    def __init__(
+        self,
+        shell_command,
+        server_url="",
+        term_settings=None,
+        extra_env=None,
+        ioloop=None,
+        blocking_io_executor=None,
+    ):
         self.shell_command = shell_command
         self.server_url = server_url
         self.term_settings = term_settings or {}
@@ -171,8 +172,7 @@ class TermManagerBase:
 
         if blocking_io_executor is None:
             self._blocking_io_executor_is_external = False
-            self.blocking_io_executor = futures.ThreadPoolExecutor(
-                max_workers=1)
+            self.blocking_io_executor = futures.ThreadPoolExecutor(max_workers=1)
         else:
             self._blocking_io_executor_is_external = True
             self.blocking_io_executor = blocking_io_executor
@@ -304,7 +304,6 @@ class SingleTermManager(TermManagerBase):
 
 
 class MaxTerminalsReached(Exception):
-
     def __init__(self, max_terminals):
         self.max_terminals = max_terminals
 

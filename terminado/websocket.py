@@ -8,8 +8,8 @@ import json
 import logging
 import os
 
-from tornado import gen
 import tornado.websocket
+from tornado import gen
 from tornado.concurrent import run_on_executor
 
 
@@ -33,8 +33,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self._user_command = ""
 
         # Enable if the environment variable LOG_TERMINAL_OUTPUT is "true"
-        self._enable_output_logging = str.lower(
-            os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true"
+        self._enable_output_logging = str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true"
 
     def origin_check(self, origin=None):
         """Deprecated: backward-compat for terminado <= 0.5."""
@@ -130,7 +129,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         """
         self._logger.debug(log)
 
-    @run_on_executor(executor='_blocking_io_executor')
+    @run_on_executor(executor="_blocking_io_executor")
     def stdin_to_ptyproc(self, text):
         """Handles stdin messages sent on the websocket.
 
