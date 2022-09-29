@@ -111,6 +111,16 @@ jobs:
         with:
           package_name: jupyter_server_terminals
 
+  spyder-terminal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v2
+      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - uses: jupyterlab/maintainer-tools/.github/actions/downstream-test@v1
+        with:
+          package_name: spyter-terminal
+
   # Run "pre-commit run --all-files --hook-stage=manual"
   pre-commit:
     name: Run pre-commit hook
