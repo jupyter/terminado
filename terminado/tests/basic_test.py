@@ -33,7 +33,8 @@ if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.starts
 # from the sever.
 #
 DONE_TIMEOUT = 1.0
-os.environ["ASYNC_TEST_TIMEOUT"] = "20"  # Global test case timeout
+ASYNC_TEST_TIMEOUT = 30
+os.environ["ASYNC_TEST_TIMEOUT"] = str(ASYNC_TEST_TIMEOUT)
 
 MAX_TERMS = 3  # Testing thresholds
 
@@ -83,6 +84,24 @@ class TestTermClient:
         stdout = "".join([msg[1] for msg in msglist if msg[0] == "stdout"])
         othermsg = [msg for msg in msglist if msg[0] != "stdout"]
         return (stdout, othermsg)
+
+    async def discard_stdout(self, timeout=DONE_TIMEOUT):
+        """Read standard output messages, discarding the data
+        as it's received. Return the number of bytes discarded
+        and any non-stdout msgs"""
+        othermsg: list = []
+        bytes_discarded = 0
+        delta = datetime.timedelta(seconds=timeout)
+        while True:
+            try:
+                mf = self.read_msg()
+                msg = await tornado.gen.with_timeout(delta, mf)
+            except tornado.gen.TimeoutError:
+                return bytes_discarded, othermsg
+            if msg[0] == "stdout":
+                bytes_discarded += len(msg[1])
+            else:
+                othermsg.append(msg)
 
     async def write_stdin(self, data):
         """Write to terminal stdin"""
@@ -281,6 +300,30 @@ class UniqueTermTests(TermTestCase):
         tm = await self.get_term_client("/unique")
         msg = await tm.read_msg()
         self.assertEqual(msg[0], "setup")
+
+    @tornado.testing.gen_test
+    @pytest.mark.timeout(timeout=ASYNC_TEST_TIMEOUT, method="thread")
+    async def test_large_io_doesnt_hang(self):
+        # This is a regression test for an error where Terminado hangs when
+        # the PTY buffer size is exceeded. While the buffer size varies from
+        # OS to OS, 30KBish seems like a reasonable amount and will trigger
+        # this on both OSX and Debian.
+        massive_payload = "ten bytes " * 3000
+        massive_payload = "echo " + massive_payload + "\n"
+        tm = await self.get_term_client("/unique")
+        # Clear all startup messages.
+        await tm.read_all_msg()
+        # Write a payload that doesn't fit in a single PTY buffer.
+        await tm.write_stdin(massive_payload)
+        # Verify that the server didn't hang when responding, and that
+        # we got a reasonable amount of data back (to tell us the read
+        # didn't just timeout.
+        bytes_discarded, other = await tm.discard_stdout()
+        # Echo wont actually output anything on Windows.
+        if "win" not in platform:
+            assert bytes_discarded > 10000
+        assert other == []
+        tm.close()
 
 
 if __name__ == "__main__":

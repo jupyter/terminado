@@ -14,6 +14,7 @@ import select
 import signal
 import warnings
 from collections import deque
+from concurrent import futures
 
 try:
     from ptyprocess import PtyProcessUnicode
@@ -153,7 +154,13 @@ class TermManagerBase:
     """Base class for a terminal manager."""
 
     def __init__(
-        self, shell_command, server_url="", term_settings=None, extra_env=None, ioloop=None
+        self,
+        shell_command,
+        server_url="",
+        term_settings=None,
+        extra_env=None,
+        ioloop=None,
+        blocking_io_executor=None,
     ):
         self.shell_command = shell_command
         self.server_url = server_url
@@ -162,6 +169,13 @@ class TermManagerBase:
         self.log = logging.getLogger(__name__)
 
         self.ptys_by_fd = {}
+
+        if blocking_io_executor is None:
+            self._blocking_io_executor_is_external = False
+            self.blocking_io_executor = futures.ThreadPoolExecutor(max_workers=1)
+        else:
+            self._blocking_io_executor_is_external = True
+            self.blocking_io_executor = blocking_io_executor
 
         if ioloop is not None:
             warnings.warn(
@@ -259,6 +273,8 @@ class TermManagerBase:
 
     async def shutdown(self):
         await self.kill_all()
+        if not self._blocking_io_executor_is_external:
+            self.blocking_io_executor.shutdown(wait=False, cancel_futures=True)
 
     async def kill_all(self):
         futures = []
