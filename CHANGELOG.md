@@ -2,11 +2,30 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.16.0
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.15.0...7210e82a94596d7d8a00577169c09198efbe4633))
+
+### Bugs fixed
+
+- Fix issue where large stdin writes can cause Tornado to hang [#189](https://github.com/jupyter/terminado/pull/189) ([@KoopaKing](https://github.com/KoopaKing))
+
+### Maintenance and upkeep improvements
+
+- Switch to using hatch version [#186](https://github.com/jupyter/terminado/pull/186) ([@blink1073](https://github.com/blink1073))
+- Fix flake8 v5 compat [#179](https://github.com/jupyter/terminado/pull/179) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-05-16&to=2022-09-29&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-05-16..2022-09-29&type=Issues) | [@KoopaKing](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3AKoopaKing+updated%3A2022-05-16..2022-09-29&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-05-16..2022-09-29&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.15.0
 
 No merged PRs
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.13.3
 
