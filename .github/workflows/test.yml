@@ -119,7 +119,7 @@ jobs:
       - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
       - uses: jupyterlab/maintainer-tools/.github/actions/downstream-test@v1
         with:
-          package_name: spyter-terminal
+          package_name: spyder-terminal
 
   # Run "pre-commit run --all-files --hook-stage=manual"
   pre-commit:
