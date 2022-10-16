@@ -38,7 +38,7 @@ jobs:
           pip check
       - name: Run the tests
         run: |
-          python -m pytest -vv || python -m pytest -vv --lf
+          hatch run test:test || hatch run test:test --lf
 
   test_minimum_versions:
     name: Test Minimum Versions
@@ -118,3 +118,10 @@ jobs:
       - uses: actions/checkout@v2
       - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
       - uses: jupyterlab/maintainer-tools/.github/actions/pre-commit@v1
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - run: hatch run docs:build
