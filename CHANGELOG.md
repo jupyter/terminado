@@ -2,6 +2,24 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.17.0
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.16.0...91320b53ededce0ea507e1cd45b47492c085cac2))
+
+### Maintenance and upkeep improvements
+
+- Clean up docs install [#198](https://github.com/jupyter/terminado/pull/198) ([@blink1073](https://github.com/blink1073))
+- Maintenance cleanup [#196](https://github.com/jupyter/terminado/pull/196) ([@blink1073](https://github.com/blink1073))
+- Maintenance cleanup [#195](https://github.com/jupyter/terminado/pull/195) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-09-29&to=2022-10-25&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-09-29..2022-10-25&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-09-29..2022-10-25&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.16.0
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.15.0...7210e82a94596d7d8a00577169c09198efbe4633))
@@ -20,8 +38,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-05-16&to=2022-09-29&type=c))
 
 [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-05-16..2022-09-29&type=Issues) | [@KoopaKing](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3AKoopaKing+updated%3A2022-05-16..2022-09-29&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-05-16..2022-09-29&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.15.0
 
