@@ -24,12 +24,13 @@ Homepage = "https://github.com/jupyter/terminado"
 
 [project.optional-dependencies]
 test = [ "pytest>=7.0", "pre-commit", "pytest-timeout",]
+docs = [ "sphinx", "pydata-sphinx-theme" ]
 
 [tool.hatch.version]
 path = "terminado/_version.py"
 
 [tool.hatch.envs.docs]
-dependencies = ["sphinx", "pydata-sphinx-theme"]
+features = ["docs"]
 [tool.hatch.envs.docs.scripts]
 build = "make -C doc html SPHINXOPTS='-W'"
 
