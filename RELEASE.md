@@ -1,4 +1,4 @@
-This repository uses [`jupyter_releaser`](https://github.com/jupyter-server/jupyter_releaser) for automated releases.
+The recommended way to make a release is to use [`jupyter_releaser`](https://jupyter-releaser.readthedocs.io/en/latest/get_started/making_release_from_repo.html).
 
 To create a manual release, update the version number in `terminado/__init__.py`, then run the following:
 
