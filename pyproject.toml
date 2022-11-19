@@ -38,7 +38,15 @@ build = "make -C doc html SPHINXOPTS='-W'"
 features = ["test"]
 [tool.hatch.envs.test.scripts]
 test = "python -m pytest -vv {args}"
-nowarn = "python -m pytest -vv -W default {args}"
+nowarn = "test -W default {args}"
+
+[tool.hatch.envs.cov]
+features = ["test"]
+dependencies = ["coverage", "pytest-cov"]
+[tool.hatch.envs.cov.scripts]
+test = "python -m pytest -vv --cov terminado --cov-branch --cov-report term-missing:skip-covered {args}"
+nowarn = "test -W default {args}"
+integration = "test --integration_tests=true {args}"
 
 [tool.pytest.ini_options]
 addopts = "-raXs --durations 10 --color=yes --doctest-modules"
@@ -48,6 +56,20 @@ testpaths = [
 timeout = 300
 # Restore this setting to debug failures
 # timeout_method = "thread"
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug:",
+  "if settings.DEBUG",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == .__main__.:",
+  "class .*\bProtocol\\):",
+"@(abc\\.)?abstractmethod",
+]
 
 [tool.mypy]
 check_untyped_defs = true
