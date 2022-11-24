@@ -16,3 +16,4 @@ IGNORE
 ORIG
 SUBMIT
 doc/_build/
+doc/changelog.md

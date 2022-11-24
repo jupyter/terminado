@@ -4,18 +4,19 @@ Terminado
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    websocket
    uimodule
-   releasenotes
+   changelog
 
 .. seealso::
 
    `Connecting Xterm.js to Terminado <https://xtermjs.org/docs/guides/terminado/>`_
      From the Xterm.js docs
 
-.. include:: ../README.rst
+.. include:: ../README.md
+   :parser: myst_parser.sphinx_
 
 
 Indices and tables
