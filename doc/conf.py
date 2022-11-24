@@ -11,16 +11,17 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import os
+import os.path as osp
+import shutil
 import sys
 
-HERE = os.path.dirname(__file__)
-sys.path.insert(0, os.path.join(HERE, ".."))
+HERE = osp.dirname(__file__)
+sys.path.insert(0, osp.join(HERE, ".."))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-# sys.path.insert(0, os.path.abspath('.'))
+# documentation root, use osp.abspath to make it absolute, like shown here.
+# sys.path.insert(0, osp.abspath('.'))
 
 # -- General configuration ------------------------------------------------
 
@@ -31,18 +32,10 @@ sys.path.insert(0, os.path.join(HERE, ".."))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
 ]
-
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
-
-# The suffix of source filenames.
-source_suffix = ".rst"
-
-# The encoding of source files.
-# source_encoding = 'utf-8-sig'
 
 # The master toctree document.
 master_doc = "index"
@@ -56,7 +49,7 @@ copyright = "2014, Thomas Kluyver"
 # built documents.
 #
 # Get information from _version.py and use it to generate version and release
-_version_py = os.path.join(HERE, "../terminado/_version.py")
+_version_py = osp.join(HERE, "../terminado/_version.py")
 version_ns: dict = {}
 exec(compile(open(_version_py).read(), _version_py, "exec"), version_ns)
 # The short X.Y version.
@@ -263,3 +256,8 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {"tornado": ("http://www.tornadoweb.org/en/stable/", None)}
+
+
+def setup(app):
+    dest = osp.join(HERE, "changelog.md")
+    shutil.copy(osp.join(HERE, "..", "CHANGELOG.md"), dest)

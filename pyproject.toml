@@ -5,6 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "terminado"
 dynamic = ["version"]
+readme = "README.md"
 license = { file = "LICENSE" }
 description = "Tornado websocket backend for the Xterm.js Javascript terminal emulator library."
 classifiers = [ "Environment :: Web Environment", "License :: OSI Approved :: BSD License", "Programming Language :: Python :: 3", "Topic :: Terminals :: Terminal Emulators/X Terminals",]
@@ -15,16 +16,12 @@ dependencies = [ "ptyprocess;os_name!='nt'", "pywinpty>=1.1.0;os_name=='nt'", "t
 name = "Jupyter Development Team"
 email = "jupyter@googlegroups.com"
 
-[project.readme]
-file = "README.rst"
-content-type = "text/x-rst"
-
 [project.urls]
 Homepage = "https://github.com/jupyter/terminado"
 
 [project.optional-dependencies]
 test = [ "pytest>=7.0", "pre-commit", "pytest-timeout",]
-docs = [ "sphinx", "pydata-sphinx-theme" ]
+docs = [ "sphinx", "pydata-sphinx-theme", "myst_parser"]
 
 [tool.hatch.version]
 path = "terminado/_version.py"
