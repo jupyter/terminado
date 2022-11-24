@@ -49,8 +49,7 @@ repos:
     rev: v1.0.0
     hooks:
       - id: doc8
-        args: [--max-line-length=200]
-        additional_dependencies: ["myst_parser"]
+        args: ["--max-line-length=200", "--ignore-path=doc/index.rst"]
         stages: [manual]
 
   - repo: https://github.com/john-hen/Flake8-pyproject
