@@ -119,9 +119,9 @@ class TestTermClient:
         else:
             # This should work on any OS, but keeping the above Windows special
             # case as I can't verify on Windows.
-            for l in stdout.splitlines():
-                if re.match(r"\d+$", l):
-                    pid = int(l)
+            for li in stdout.splitlines():
+                if re.match(r"\d+$", li):
+                    pid = int(li)
                     break
         return pid
 
