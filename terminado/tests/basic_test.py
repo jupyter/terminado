@@ -117,7 +117,12 @@ class TestTermClient:
             assert match is not None
             pid = int(match.groups()[0])
         else:
-            pid = int(stdout.split("\n")[1])
+            # This should work on any OS, but keeping the above Windows special
+            # case as I can't verify on Windows.
+            for li in stdout.splitlines():
+                if re.match(r"\d+$", li):
+                    pid = int(li)
+                    break
         return pid
 
     def close(self):
