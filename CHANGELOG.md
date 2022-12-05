@@ -2,6 +2,34 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.17.1
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.17.0...f1221f46a692ff0bab0820395b008d4473269d3e))
+
+### Bugs fixed
+
+- Don't split manually on linebreaks [#209](https://github.com/jupyter/terminado/pull/209) ([@incase](https://github.com/incase))
+
+### Maintenance and upkeep improvements
+
+- Docs and workflow cleanup [#206](https://github.com/jupyter/terminado/pull/206) ([@blink1073](https://github.com/blink1073))
+- CI Cleanup [#204](https://github.com/jupyter/terminado/pull/204) ([@blink1073](https://github.com/blink1073))
+- Add ability to release from repo [#202](https://github.com/jupyter/terminado/pull/202) ([@blink1073](https://github.com/blink1073))
+- Bump actions/checkout from 2 to 3 [#201](https://github.com/jupyter/terminado/pull/201) ([@dependabot](https://github.com/dependabot))
+- Add dependabot [#200](https://github.com/jupyter/terminado/pull/200) ([@blink1073](https://github.com/blink1073))
+
+### Documentation improvements
+
+- Docs and workflow cleanup [#206](https://github.com/jupyter/terminado/pull/206) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-10-25&to=2022-12-05&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-10-25..2022-12-05&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adependabot+updated%3A2022-10-25..2022-12-05&type=Issues) | [@incase](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aincase+updated%3A2022-10-25..2022-12-05&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-10-25..2022-12-05&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.17.0
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.16.0...91320b53ededce0ea507e1cd45b47492c085cac2))
@@ -17,8 +45,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-09-29&to=2022-10-25&type=c))
 
 [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-09-29..2022-10-25&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-09-29..2022-10-25&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.16.0
 
