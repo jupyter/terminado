@@ -51,7 +51,7 @@ copyright = "2014, Thomas Kluyver"
 # Get information from _version.py and use it to generate version and release
 _version_py = osp.join(HERE, "../terminado/_version.py")
 version_ns: dict = {}
-exec(compile(open(_version_py).read(), _version_py, "exec"), version_ns)
+exec(compile(open(_version_py).read(), _version_py, "exec"), version_ns)  # noqa
 # The short X.Y version.
 version = "%s.%s" % tuple(version_ns["__version__"].split(".")[:2])
 # The full version, including alpha/beta/rc tags.

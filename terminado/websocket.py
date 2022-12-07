@@ -37,7 +37,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
 
     def origin_check(self, origin=None):
         """Deprecated: backward-compat for terminado <= 0.5."""
-        return self.check_origin(origin or self.request.headers.get("Origin"))
+        return self.check_origin(origin or self.request.headers.get("Origin", ""))
 
     def open(self, url_component=None):
         """Websocket connection opened.

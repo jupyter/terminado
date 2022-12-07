@@ -111,13 +111,18 @@ jobs:
         with:
           package_name: jupyter_server_terminals
 
-  pre_commit:
-    name: Run pre-commit hook
+  test_lint:
+    name: Test Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-      - uses: jupyterlab/maintainer-tools/.github/actions/pre-commit@v1
+      -  name: Run Linters
+         run: |
+          hatch run typing:test
+          hatch run lint:style
+          pipx run 'validate-pyproject[all]' pyproject.toml
+          pipx run doc8 --max-line-length=200
 
   docs:
     runs-on: ubuntu-latest
@@ -130,7 +135,7 @@ jobs:
     if: always()
     needs:
       - test
-      - pre_commit
+      - test_lint
       - docs
       - check_release
       - jupyter_server_terminals

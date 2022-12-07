@@ -22,6 +22,13 @@ Homepage = "https://github.com/jupyter/terminado"
 [project.optional-dependencies]
 test = [ "pytest>=7.0", "pre-commit", "pytest-timeout",]
 docs = [ "sphinx", "pydata-sphinx-theme", "myst_parser"]
+lint = [
+  "black>=22.6.0",
+  "mdformat>0.7",
+  "mdformat-gfm>=0.3.5",
+  "ruff>=0.0.156"
+]
+typing = ["mypy>=0.990"]
 
 [tool.hatch.version]
 path = "terminado/_version.py"
@@ -43,7 +50,25 @@ dependencies = ["coverage", "pytest-cov"]
 [tool.hatch.envs.cov.scripts]
 test = "python -m pytest -vv --cov terminado --cov-branch --cov-report term-missing:skip-covered {args}"
 nowarn = "test -W default {args}"
-integration = "test --integration_tests=true {args}"
+
+[tool.hatch.envs.typing]
+features = ["typing", "test"]
+[tool.hatch.envs.typing.scripts]
+test = "mypy --install-types --non-interactive {args:terminado}"
+
+[tool.hatch.envs.lint]
+features = ["lint"]
+[tool.hatch.envs.lint.scripts]
+style = [
+  "ruff {args:.}",
+  "black --check --diff {args:.}",
+  "mdformat --check {args:doc *.md}"
+]
+fmt = [
+  "black {args:.}",
+  "ruff --fix {args:.}",
+  "mdformat {args:doc *.md}"
+]
 
 [tool.pytest.ini_options]
 addopts = "-raXs --durations 10 --color=yes --doctest-modules"
@@ -83,23 +108,63 @@ warn_unused_configs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 
-[tool.flake8]
-ignore = "E501, W503, E402"
-builtins = "c, get_config"
-exclude = [
-    ".cache",
-    ".github",
-    "docs",
-    "setup.py",
+
+[tool.black]
+line-length = 100
+skip-string-normalization = true
+target-version = ["py38"]
+extend-exclude = "^/tests.*ipynb$"
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+select = [
+  "A", "B", "C", "E", "F", "FBT", "I", "N", "Q", "RUF", "S", "T",
+  "UP", "W", "YTT",
 ]
-enable-extensions = "G"
-extend-ignore = [
-    "G001", "G002", "G004", "G200", "G201", "G202",
-    # black adds spaces around ':'
-    "E203",
+ignore = [
+  # Allow non-abstract empty methods in abstract base classes
+  "B027",
+  # Ignore McCabe complexity
+  "C901",
+  # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",
+  # Use of `assert` detected
+  "S101",
+  # Line too long
+  "E501",
+  # Relative imports are banned
+  "I252",
+  # Boolean ... in function definition
+  "FBT001", "FBT002",
+  # Module level import not at top of file
+  "E402",
+  # A001/A002/A003 .. is shadowing a python builtin
+  "A001", "A002", "A003",
+  # Possible hardcoded password
+  "S105", "S106",
+  # Q000 Single quotes found but double quotes preferred
+  "Q000",
+  # N806 Variable `B` in function should be lowercase
+  "N806",
+  # T201 `print` found
+  "T201",
+  # N802 Function name `CreateWellKnownSid` should be lowercase
+  "N802", "N803"
 ]
-per-file-ignores = [
-    # B011: Do not call assert False since python -O removes these calls
-    # F841 local variable 'foo' is assigned to but never used
-    "terminado/tests/*: B011", "F841",
+unfixable = [
+  # Don't touch print statements
+  "T201",
+  # Don't touch noqa lines
+  "RUF100",
 ]
+
+[tool.ruff.per-file-ignores]
+# B011 Do not call assert False since python -O removes these calls
+# F841 local variable 'foo' is assigned to but never used
+# C408 Unnecessary `dict` call
+# E402 Module level import not at top of file
+# T201 `print` found
+# B007 Loop control variable `i` not used within the loop body.
+# N802 Function name `assertIn` should be lowercase
+"terminado/tests/*" = ["B011", "F841", "C408", "E402", "T201", "B007", "N802"]
