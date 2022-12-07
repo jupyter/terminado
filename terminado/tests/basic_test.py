@@ -25,7 +25,7 @@ from tornado.ioloop import IOLoop
 
 from terminado import NamedTermManager, SingleTermManager, TermSocket, UniqueTermManager
 
-if sys.version_info[0] == 3 and sys.version_info[1] >= 8 and sys.platform.startswith("win"):
+if sys.version_info >= (3, 8) and sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 #

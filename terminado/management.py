@@ -17,14 +17,14 @@ from collections import deque
 from concurrent import futures
 
 try:
-    from ptyprocess import PtyProcessUnicode
+    from ptyprocess import PtyProcessUnicode  # type:ignore
 
     def preexec_fn():
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 except ImportError:
     try:
-        from winpty import PtyProcess as PtyProcessUnicode
+        from winpty import PtyProcess as PtyProcessUnicode  # type:ignore
     except ImportError:
         PtyProcessUnicode = object
     preexec_fn = None  # type:ignore[assignment]
@@ -42,7 +42,7 @@ class PtyWithClients:
         self.clients = []
         # Use read_buffer to store historical messages for reconnection
         self.read_buffer: deque[list] = deque([], maxlen=1000)
-        kwargs = dict(argv=argv, env=env or [], cwd=cwd)
+        kwargs = {"argv": argv, "env": env or [], "cwd": cwd}
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
         self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
@@ -139,7 +139,7 @@ def _update_removing(target, changes):
 def _poll(fd: int, timeout: float = 0.1) -> list:
     """Poll using poll() on posix systems and select() elsewhere (e.g., Windows)"""
     if os.name == "posix":
-        poller = select.poll()  # noqa: ignore missing method on Windows
+        poller = select.poll()
         poller.register(
             fd, select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR
         )  # read-only
@@ -303,7 +303,7 @@ class SingleTermManager(TermManagerBase):
         self.terminal = None
 
 
-class MaxTerminalsReached(Exception):
+class MaxTerminalsReached(Exception):  # noqa
     def __init__(self, max_terminals):
         self.max_terminals = max_terminals
 
