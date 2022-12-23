@@ -22,12 +22,7 @@ Homepage = "https://github.com/jupyter/terminado"
 [project.optional-dependencies]
 test = [ "pytest>=7.0", "pre-commit", "pytest-timeout",]
 docs = [ "sphinx", "pydata-sphinx-theme", "myst_parser"]
-lint = [
-  "black>=22.6.0",
-  "mdformat>0.7",
-  "mdformat-gfm>=0.3.5",
-  "ruff>=0.0.156"
-]
+
 typing = ["mypy>=0.990"]
 
 [tool.hatch.version]
@@ -57,7 +52,12 @@ features = ["typing", "test"]
 test = "mypy --install-types --non-interactive {args:terminado}"
 
 [tool.hatch.envs.lint]
-features = ["lint"]
+dependencies = [
+  "black[jupyter]==22.10.0",
+  "mdformat>0.7",
+  "mdformat-gfm>=0.3.5",
+  "ruff==0.0.189"
+]
 [tool.hatch.envs.lint.scripts]
 style = [
   "ruff {args:.}",
@@ -134,7 +134,7 @@ ignore = [
   # Line too long
   "E501",
   # Relative imports are banned
-  "I252",
+  "TID252",
   # Boolean ... in function definition
   "FBT001", "FBT002",
   # Module level import not at top of file
@@ -168,3 +168,13 @@ unfixable = [
 # B007 Loop control variable `i` not used within the loop body.
 # N802 Function name `assertIn` should be lowercase
 "terminado/tests/*" = ["B011", "F841", "C408", "E402", "T201", "B007", "N802"]
+
+[tool.interrogate]
+ignore-init-module=true
+ignore-private=true
+ignore-semiprivate=true
+ignore-property-decorators=true
+ignore-nested-functions=true
+ignore-nested-classes=true
+fail-under=100
+exclude = ["demos", "doc", "terminado/tests"]

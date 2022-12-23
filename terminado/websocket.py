@@ -23,6 +23,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     """Handler for a terminal websocket"""
 
     def initialize(self, term_manager):
+        """Initialize the handler."""
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
@@ -73,6 +74,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.send_json_message(["stdout", text])
 
     def send_json_message(self, content):
+        """Send a json message on the socket."""
         json_msg = json.dumps(content)
         self.write_message(json_msg)
 
