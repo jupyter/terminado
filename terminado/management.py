@@ -20,6 +20,7 @@ try:
     from ptyprocess import PtyProcessUnicode  # type:ignore
 
     def preexec_fn():
+        """A prexec function to set up a signal handler."""
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 except ImportError:
@@ -38,7 +39,10 @@ DEFAULT_TERM_TYPE = "xterm-256color"
 
 
 class PtyWithClients:
+    """A pty object with associated clients."""
+
     def __init__(self, argv, env=None, cwd=None):
+        """Initialize the pty."""
         self.clients = []
         # Use read_buffer to store historical messages for reconnection
         self.read_buffer: deque[list] = deque([], maxlen=1000)
@@ -97,6 +101,7 @@ class PtyWithClients:
         _ = IOLoop.current()
 
         def sleep():
+            """Sleep to allow the terminal to exit gracefully."""
             return asyncio.sleep(self.ptyproc.delayafterterminate)
 
         if not self.ptyproc.isalive():
@@ -162,6 +167,7 @@ class TermManagerBase:
         ioloop=None,
         blocking_io_executor=None,
     ):
+        """Initialize the manager."""
         self.shell_command = shell_command
         self.server_url = server_url
         self.term_settings = term_settings or {}
@@ -272,11 +278,13 @@ class TermManagerBase:
         pass
 
     async def shutdown(self):
+        """Shutdown the manager."""
         await self.kill_all()
         if not self._blocking_io_executor_is_external:
             self.blocking_io_executor.shutdown(wait=False, cancel_futures=True)
 
     async def kill_all(self):
+        """Kill all terminals."""
         futures = []
         for term in self.ptys_by_fd.values():
             futures.append(term.terminate(force=True))
@@ -289,25 +297,32 @@ class SingleTermManager(TermManagerBase):
     """All connections to the websocket share a common terminal."""
 
     def __init__(self, **kwargs):
+        """Initialize the manager."""
         super().__init__(**kwargs)
         self.terminal = None
 
     def get_terminal(self, url_component=None):
+        """ "Get the singleton terminal."""
         if self.terminal is None:
             self.terminal = self.new_terminal()
             self.start_reading(self.terminal)
         return self.terminal
 
     async def kill_all(self):
+        """Kill the singletone terminal."""
         await super().kill_all()
         self.terminal = None
 
 
 class MaxTerminalsReached(Exception):  # noqa
+    """An error raised when we exceed the max number of terminals."""
+
     def __init__(self, max_terminals):
+        """Initialize the error."""
         self.max_terminals = max_terminals
 
     def __str__(self):
+        """The string representation of the error."""
         return "Cannot create more than %d terminals" % self.max_terminals
 
 
@@ -315,10 +330,12 @@ class UniqueTermManager(TermManagerBase):
     """Give each websocket a unique terminal to use."""
 
     def __init__(self, max_terminals=None, **kwargs):
+        """Initialize the manager."""
         super().__init__(**kwargs)
         self.max_terminals = max_terminals
 
     def get_terminal(self, url_component=None):
+        """Get a terminal from the manager."""
         if self.max_terminals and len(self.ptys_by_fd) >= self.max_terminals:
             raise MaxTerminalsReached(self.max_terminals)
 
@@ -343,11 +360,13 @@ class NamedTermManager(TermManagerBase):
     """Share terminals between websockets connected to the same endpoint."""
 
     def __init__(self, max_terminals=None, **kwargs):
+        """Initialize the manager."""
         super().__init__(**kwargs)
         self.max_terminals = max_terminals
         self.terminals = {}
 
     def get_terminal(self, term_name):
+        """Get or create a terminal by name."""
         assert term_name is not None
 
         if term_name in self.terminals:
@@ -373,6 +392,7 @@ class NamedTermManager(TermManagerBase):
                 return name
 
     def new_named_terminal(self, **kwargs):
+        """Create a new named terminal with an automatic name."""
         if "name" in kwargs:
             name = kwargs["name"]
         else:
@@ -385,19 +405,23 @@ class NamedTermManager(TermManagerBase):
         return name, term
 
     def kill(self, name, sig=signal.SIGTERM):
+        """Kill a terminal by name."""
         term = self.terminals[name]
         term.kill(sig)  # This should lead to an EOF
 
     async def terminate(self, name, force=False):
+        """Terminate a terminal by name."""
         term = self.terminals[name]
         await term.terminate(force=force)
 
     def on_eof(self, ptywclients):
+        """Handle end of file for a pty with clients."""
         super().on_eof(ptywclients)
         name = ptywclients.term_name
         self.log.info("Terminal %s closed", name)
         self.terminals.pop(name, None)
 
     async def kill_all(self):
+        """Kill all terminals."""
         await super().kill_all()
         self.terminals = {}
