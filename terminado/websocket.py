@@ -40,7 +40,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         """Deprecated: backward-compat for terminado <= 0.5."""
         return self.check_origin(origin or self.request.headers.get("Origin", ""))
 
-    def open(self, url_component=None):
+    def open(self, url_component=None):  # noqa
         """Websocket connection opened.
 
         Call our terminal manager to get a terminal, and connect to it as a
@@ -78,9 +78,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         json_msg = json.dumps(content)
         self.write_message(json_msg)
 
-        if self._enable_output_logging:
-            if content[0] == "stdout" and isinstance(content[1], str):
-                self.log_terminal_output(f"STDOUT: {content[1]}")
+        if self._enable_output_logging and content[0] == "stdout" and isinstance(content[1], str):
+            self.log_terminal_output(f"STDOUT: {content[1]}")
 
     @gen.coroutine
     def on_message(self, message):
@@ -92,7 +91,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         # logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
         command = json.loads(message)
         msg_type = command[0]
-        assert self.terminal is not None
+        assert self.terminal is not None  # noqa
         if msg_type == "stdin":
             yield self.stdin_to_ptyproc(command[1])
             if self._enable_output_logging:

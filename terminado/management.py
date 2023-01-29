@@ -70,7 +70,7 @@ class PtyWithClients:
             if cols is not None and cols < mincols:
                 mincols = cols
 
-        if minrows == 10001 or mincols == 10001:
+        if minrows == 10001 or mincols == 10001:  # noqa
             return
 
         rows, cols = self.ptyproc.getwinsize()
@@ -115,10 +115,7 @@ class PtyWithClients:
             if force:
                 self.kill(signal.SIGKILL)
                 await sleep()
-                if not self.ptyproc.isalive():
-                    return True
-                else:
-                    return False
+                return bool(not self.ptyproc.isalive())
             return False
         except OSError:
             # I think there are kernel timing issues that sometimes cause
@@ -126,10 +123,7 @@ class PtyWithClients:
             # process is dead to the kernel.
             # Make one last attempt to see if the kernel is up to date.
             await sleep()
-            if not self.ptyproc.isalive():
-                return True
-            else:
-                return False
+            return bool(not self.ptyproc.isalive())
 
 
 def _update_removing(target, changes):
@@ -367,7 +361,7 @@ class NamedTermManager(TermManagerBase):
 
     def get_terminal(self, term_name):
         """Get or create a terminal by name."""
-        assert term_name is not None
+        assert term_name is not None  # noqa
 
         if term_name in self.terminals:
             return self.terminals[term_name]
@@ -393,10 +387,7 @@ class NamedTermManager(TermManagerBase):
 
     def new_named_terminal(self, **kwargs):
         """Create a new named terminal with an automatic name."""
-        if "name" in kwargs:
-            name = kwargs["name"]
-        else:
-            name = self._next_available_name()
+        name = kwargs["name"] if "name" in kwargs else self._next_available_name()
         term = self.new_terminal(**kwargs)
         self.log.info("New terminal with automatic name: %s", name)
         term.term_name = name
