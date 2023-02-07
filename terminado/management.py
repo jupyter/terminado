@@ -152,7 +152,7 @@ def _poll(fd: int, timeout: float = 0.1) -> list:
 class TermManagerBase:
     """Base class for a terminal manager."""
 
-    def __init__(
+    def __init__(  # noqa
         self,
         shell_command,
         server_url="",
