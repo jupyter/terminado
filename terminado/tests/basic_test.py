@@ -49,7 +49,6 @@ class TestTermClient:
         self.pending_read = None
 
     async def read_msg(self):
-
         # Because the Tornado Websocket client has no way to cancel
         # a pending read, we have to keep track of them...
         if self.pending_read is None:
@@ -130,7 +129,6 @@ class TestTermClient:
 
 
 class TermTestCase(tornado.testing.AsyncHTTPTestCase):
-
     # Factory for TestTermClient, because it has to be async
     # See:  https://github.com/tornadoweb/tornado/issues/1161
     async def get_term_client(self, path):
