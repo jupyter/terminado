@@ -53,7 +53,7 @@ _version_py = osp.join(HERE, "../terminado/_version.py")
 version_ns: dict = {}
 exec(compile(open(_version_py).read(), _version_py, "exec"), version_ns)  # noqa
 # The short X.Y version.
-version = "%s.%s" % tuple(version_ns["__version__"].split(".")[:2])
+version = "{}.{}".format(*tuple(version_ns["__version__"].split(".")[:2]))
 # The full version, including alpha/beta/rc tags.
 release = version_ns["__version__"]
 
