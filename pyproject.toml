@@ -93,6 +93,10 @@ exclude_lines = [
 "@(abc\\.)?abstractmethod",
 ]
 
+[tool.coverage.run]
+relative_files = true
+source = ["terminado"]
+
 [tool.mypy]
 check_untyped_defs = true
 disallow_incomplete_defs = true
