@@ -1,7 +1,6 @@
 # Terminado
 
 [![Build Status](https://github.com/jupyter/terminado/actions/workflows/test.yml/badge.svg?query=branch%3Amain++)](https://github.com/jupyter/terminado/actions/workflows/test.yml/badge.svg?query=branch%3Amain++)
-[![codecov](https://codecov.io/gh/jupyter/terminado/branch/main/graph/badge.svg?token=Ih2XfDqyD1)](https://codecov.io/gh/jupyter/terminado)
 [![Documentation Status](https://readthedocs.org/projects/terminado/badge/?version=latest)](http://terminado.readthedocs.io/en/latest/?badge=latest)
 
 This is a [Tornado](http://tornadoweb.org/) websocket backend for the
