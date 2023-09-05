@@ -19,9 +19,9 @@ class Terminal(tornado.web.UIModule):
         """Render the module."""
         return (
             '<div class="terminado-container" '
-            'data-ws-url="{ws_url}" '
-            'data-rows="{rows}" data-cols="{cols}"/>'
-        ).format(ws_url=ws_url, rows=rows, cols=cols)
+            f'data-ws-url="{ws_url}" '
+            f'data-rows="{rows}" data-cols="{cols}"/>'
+        )
 
     def javascript_files(self):
         """Get the list of JS files to include."""
