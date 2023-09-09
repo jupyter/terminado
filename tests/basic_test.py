@@ -322,7 +322,7 @@ class UniqueTermTests(TermTestCase):
         # we got a reasonable amount of data back (to tell us the read
         # didn't just timeout.
         bytes_discarded, other = await tm.discard_stdout()
-        # Echo wont actually output anything on Windows.
+        # Echo won't actually output anything on Windows.
         if "win" not in platform:
             assert bytes_discarded > 10000  # noqa
         assert other == []
