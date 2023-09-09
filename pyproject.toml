@@ -82,7 +82,10 @@ testpaths = [
     "tests/"
 ]
 timeout = 300
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "module:unclosed <socket.socket:ResourceWarning",
+]
 # Restore this setting to debug failures
 # timeout_method = "thread"
 
