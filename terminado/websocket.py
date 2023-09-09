@@ -3,17 +3,22 @@
 # Copyright (c) Jupyter Development Team
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
+from __future__ import annotations
 
 import json
 import logging
 import os
+from typing import TYPE_CHECKING, Any
 
 import tornado.websocket
 from tornado import gen
 from tornado.concurrent import run_on_executor
 
+if TYPE_CHECKING:
+    from terminado.management import PtyWithClients, TermManagerBase
 
-def _cast_unicode(s):
+
+def _cast_unicode(s: str | bytes) -> str:
     if isinstance(s, bytes):
         return s.decode("utf-8")
     return s
@@ -22,12 +27,12 @@ def _cast_unicode(s):
 class TermSocket(tornado.websocket.WebSocketHandler):
     """Handler for a terminal websocket"""
 
-    def initialize(self, term_manager):
+    def initialize(self, term_manager: TermManagerBase) -> None:
         """Initialize the handler."""
         self.term_manager = term_manager
         self.term_name = ""
         self.size = (None, None)
-        self.terminal = None
+        self.terminal: PtyWithClients | None = None
         self._blocking_io_executor = term_manager.blocking_io_executor
 
         self._logger = logging.getLogger(__name__)
@@ -36,11 +41,13 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         # Enable if the environment variable LOG_TERMINAL_OUTPUT is "true"
         self._enable_output_logging = str.lower(os.getenv("LOG_TERMINAL_OUTPUT", "false")) == "true"
 
-    def origin_check(self, origin=None):
+    def origin_check(self, origin: str | None = None) -> bool:
         """Deprecated: backward-compat for terminado <= 0.5."""
-        return self.check_origin(origin or self.request.headers.get("Origin", ""))
+        origin = origin or self.request.headers.get("Origin", "")
+        assert origin is not None  # noqa: S101
+        return self.check_origin(origin)
 
-    def open(self, url_component=None):  # noqa
+    def open(self, url_component: Any = None) -> None:  # type:ignore[override]  # noqa
         """Websocket connection opened.
 
         Call our terminal manager to get a terminal, and connect to it as a
@@ -69,11 +76,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if buffered:
             self.on_pty_read(buffered)
 
-    def on_pty_read(self, text):
+    def on_pty_read(self, text: str) -> None:
         """Data read from pty; send to frontend"""
         self.send_json_message(["stdout", text])
 
-    def send_json_message(self, content):
+    def send_json_message(self, content: Any) -> None:
         """Send a json message on the socket."""
         json_msg = json.dumps(content)
         self.write_message(json_msg)
@@ -82,7 +89,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.log_terminal_output(f"STDOUT: {content[1]}")
 
     @gen.coroutine
-    def on_message(self, message):
+    def on_message(self, message: str) -> None:  # type:ignore[misc]
         """Handle incoming websocket message
 
         We send JSON arrays, where the first element is a string indicating
@@ -104,7 +111,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.size = command[1:3]
             self.terminal.resize_to_smallest()
 
-    def on_close(self):
+    def on_close(self) -> None:
         """Handle websocket closing.
 
         Disconnect from our terminal, and tell the terminal manager we're
@@ -116,7 +123,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
             self.terminal.resize_to_smallest()
         self.term_manager.client_disconnected(self)
 
-    def on_pty_died(self):
+    def on_pty_died(self) -> None:
         """Terminal closed: tell the frontend, and close the socket."""
         self.send_json_message(["disconnect", 1])
         self.close()
@@ -131,7 +138,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self._logger.debug(log)
 
     @run_on_executor(executor="_blocking_io_executor")
-    def stdin_to_ptyproc(self, text):
+    def stdin_to_ptyproc(self, text: str) -> None:
         """Handles stdin messages sent on the websocket.
 
         This is a blocking call that should NOT be performed inside the
