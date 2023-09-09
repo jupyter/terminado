@@ -168,5 +168,8 @@ ignore-nested-classes=true
 fail-under=100
 exclude = ["demos", "doc", "tests"]
 
+[tool.codespell]
+ignore-words-list = "incase"
+
 [tool.repo-review]
 ignore = ["PY007", "PP308", "GH102", "PC140"]

@@ -29,7 +29,7 @@ class Terminal(tornado.web.UIModule):
         return ["/xstatic/termjs/term.js", "/static/terminado.js"]
 
     def embedded_javascript(self):
-        """Get the embdedded JS content as a string."""
+        """Get the embedded JS content as a string."""
         file = os.path.join(os.path.dirname(__file__), "uimod_embed.js")
         with open(file) as f:
             return f.read()
