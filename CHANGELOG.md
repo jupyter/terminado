@@ -323,7 +323,7 @@ No merged PRs
 
 - Run only the basic test on Appveyor [#64](https://github.com/jupyter/terminado/pull/64) ([@blink1073](https://github.com/blink1073))
 - Fix for https://github.com/jupyter/terminado/issues/62 [#63](https://github.com/jupyter/terminado/pull/63) ([@cpranav](https://github.com/cpranav))
-- Add python_requires to help pip, and version classifers [#57](https://github.com/jupyter/terminado/pull/57) ([@hugovk](https://github.com/hugovk))
+- Add python_requires to help pip, and version classifiers [#57](https://github.com/jupyter/terminado/pull/57) ([@hugovk](https://github.com/hugovk))
 - Set websocket.terminal to None when the child exits [#55](https://github.com/jupyter/terminado/pull/55) ([@takluyver](https://github.com/takluyver))
 
 ## 0.8.1
