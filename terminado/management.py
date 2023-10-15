@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from terminado.websocket import TermSocket
 
 try:
-    from ptyprocess import PtyProcessUnicode  # type:ignore[import]
+    from ptyprocess import PtyProcessUnicode  # type:ignore[import-untyped]
 
     def preexec_fn() -> None:
         """A prexec function to set up a signal handler."""
@@ -29,7 +29,7 @@ try:
 
 except ImportError:
     try:
-        from winpty import PtyProcess as PtyProcessUnicode  # type:ignore[import]
+        from winpty import PtyProcess as PtyProcessUnicode  # type:ignore[import-not-found]
     except ImportError:
         PtyProcessUnicode = object
     preexec_fn = None  # type:ignore[assignment]

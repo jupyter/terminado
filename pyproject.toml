@@ -22,8 +22,7 @@ Homepage = "https://github.com/jupyter/terminado"
 [project.optional-dependencies]
 test = [ "pytest>=7.0", "pre-commit", "pytest-timeout",]
 docs = [ "sphinx", "pydata-sphinx-theme", "myst_parser"]
-
-typing = ["mypy>=1.5.1"]
+typing = ["mypy~=1.6", "traitlets>=5.11.1"]
 
 [tool.hatch.version]
 path = "terminado/_version.py"
