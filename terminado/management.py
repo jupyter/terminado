@@ -288,9 +288,7 @@ class TermManagerBase:
         """Shutdown the manager."""
         await self.kill_all()
         if not self._blocking_io_executor_is_external:
-            self.blocking_io_executor.shutdown(
-                wait=False, cancel_futures=True
-            )  # type:ignore[call-arg]
+            self.blocking_io_executor.shutdown(wait=False, cancel_futures=True)  # type:ignore[call-arg]
 
     async def kill_all(self) -> None:
         """Kill all terminals."""

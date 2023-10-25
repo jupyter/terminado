@@ -42,16 +42,11 @@ repos:
       - id: blacken-docs
         additional_dependencies: [black==23.7.0]
 
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 23.9.1
-    hooks:
-      - id: black
-
   - repo: https://github.com/codespell-project/codespell
     rev: "v2.2.6"
     hooks:
       - id: codespell
-        args: ["-L", "sur,nd"]
+        args: ["-L", "incase"]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: "v1.10.0"
@@ -63,6 +58,7 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.0.292
     hooks:
+      - id: ruff-format
       - id: ruff
         args: ["--fix", "--show-fixes"]
 
