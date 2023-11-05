@@ -48,6 +48,15 @@ repos:
       - id: codespell
         args: ["-L", "incase"]
 
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.6.1"
+    hooks:
+      - id: mypy
+        files: "^terminado"
+        stages: [manual]
+        args: ["--install-types", "--non-interactive"]
+        additional_dependencies: ["tornado", "ptyprocess"]
+
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: "v1.10.0"
     hooks:
