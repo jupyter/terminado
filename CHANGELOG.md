@@ -2,6 +2,34 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.18.0
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.17.1...e1a98d4078cf72e7721d46c20d78daf813a297ef))
+
+### Maintenance and upkeep improvements
+
+- Remove py37 support [#233](https://github.com/jupyter/terminado/pull/233) ([@blink1073](https://github.com/blink1073))
+- chore: update pre-commit hooks [#232](https://github.com/jupyter/terminado/pull/232) ([@pre-commit-ci](https://github.com/pre-commit-ci))
+- Clean up lint handling [#231](https://github.com/jupyter/terminado/pull/231) ([@blink1073](https://github.com/blink1073))
+- Use ruff format and fix docs warning [#230](https://github.com/jupyter/terminado/pull/230) ([@blink1073](https://github.com/blink1073))
+- Update typings for mypy 1.6 [#229](https://github.com/jupyter/terminado/pull/229) ([@blink1073](https://github.com/blink1073))
+- chore: update pre-commit hooks [#228](https://github.com/jupyter/terminado/pull/228) ([@pre-commit-ci](https://github.com/pre-commit-ci))
+- Bump actions/checkout from 3 to 4 [#227](https://github.com/jupyter/terminado/pull/227) ([@dependabot](https://github.com/dependabot))
+- Adopt sp-repo-review [#226](https://github.com/jupyter/terminado/pull/226) ([@blink1073](https://github.com/blink1073))
+- Use local coverage [#220](https://github.com/jupyter/terminado/pull/220) ([@blink1073](https://github.com/blink1073))
+- Clean up license file [#217](https://github.com/jupyter/terminado/pull/217) ([@dcsaba89](https://github.com/dcsaba89))
+- Add more linting [#215](https://github.com/jupyter/terminado/pull/215) ([@blink1073](https://github.com/blink1073))
+- Add docstring enforcement [#213](https://github.com/jupyter/terminado/pull/213) ([@blink1073](https://github.com/blink1073))
+- Adopt ruff and address lint [#212](https://github.com/jupyter/terminado/pull/212) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-12-05&to=2023-11-10&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-12-05..2023-11-10&type=Issues) | [@dcsaba89](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adcsaba89+updated%3A2022-12-05..2023-11-10&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adependabot+updated%3A2022-12-05..2023-11-10&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-12-05..2023-11-10&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.17.1
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.17.0...f1221f46a692ff0bab0820395b008d4473269d3e))
@@ -27,8 +55,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-10-25&to=2022-12-05&type=c))
 
 [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-10-25..2022-12-05&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adependabot+updated%3A2022-10-25..2022-12-05&type=Issues) | [@incase](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Aincase+updated%3A2022-10-25..2022-12-05&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-10-25..2022-12-05&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.17.0
 
