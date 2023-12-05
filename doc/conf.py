@@ -11,12 +11,12 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import os.path as osp
 import shutil
 import sys
+from pathlib import Path
 
-HERE = osp.dirname(__file__)
-sys.path.insert(0, osp.join(HERE, ".."))
+HERE = Path(__file__).parent.resolve()
+sys.path.insert(0, HERE.parent)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -42,16 +42,18 @@ master_doc = "index"
 
 # General information about the project.
 project = "Terminado"
-copyright = "2014, Thomas Kluyver"  # noqa
+copyright = "2014, Thomas Kluyver"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # Get information from _version.py and use it to generate version and release
-_version_py = osp.join(HERE, "../terminado/_version.py")
+_version_py = HERE / "../terminado/_version.py"
 version_ns: dict = {}
-exec(compile(open(_version_py).read(), _version_py, "exec"), version_ns)  # noqa
+
+with _version_py.open() as fid:
+    exec(compile(fid.read(), _version_py, "exec"), version_ns)  # noqa: S102
 # The short X.Y version.
 version = "{}.{}".format(*tuple(version_ns["__version__"].split(".")[:2]))
 # The full version, including alpha/beta/rc tags.
@@ -259,5 +261,5 @@ intersphinx_mapping = {"tornado": ("http://www.tornadoweb.org/en/stable/", None)
 
 
 def setup(app):
-    dest = osp.join(HERE, "changelog.md")
-    shutil.copy(osp.join(HERE, "..", "CHANGELOG.md"), dest)
+    dest = HERE / "changelog.md"
+    shutil.copy(HERE / ".." / "CHANGELOG.md", dest)

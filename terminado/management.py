@@ -76,7 +76,7 @@ class PtyWithClients:
             if cols is not None and cols < mincols:
                 mincols = cols
 
-        if minrows == 10001 or mincols == 10001:  # noqa
+        if minrows == 10001 or mincols == 10001:
             return
 
         rows, cols = self.ptyproc.getwinsize()
@@ -93,6 +93,7 @@ class PtyWithClients:
             return self.ptyproc.kill(sig)
         pgid = os.getpgid(self.ptyproc.pid)
         os.killpg(pgid, sig)
+        return None
 
     async def terminate(self, force: bool = False) -> bool:
         """This forces a child process to terminate. It starts nicely with
@@ -149,16 +150,15 @@ def _poll(fd: int, timeout: float = 0.1) -> list[tuple[int, int]]:
             fd, select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR
         )  # read-only
         return poller.poll(timeout * 1000)  # milliseconds
-    else:
-        # poll() not supported on Windows
-        r, _, _ = select.select([fd], [], [], timeout)
-        return r
+    # poll() not supported on Windows
+    r, _, _ = select.select([fd], [], [], timeout)
+    return r
 
 
 class TermManagerBase:
     """Base class for a terminal manager."""
 
-    def __init__(  # noqa
+    def __init__(
         self,
         shell_command: str,
         server_url: str = "",
@@ -254,7 +254,7 @@ class TermManagerBase:
         """Called by the event loop when there is pty data ready to read."""
         # prevent blocking on fd
         if not _poll(fd, timeout=0.1):  # 100ms
-            self.log.debug(f"Spurious pty_read() on fd {fd}")
+            self.log.debug("Spurious pty_read() on fd %s", fd)
             return
         ptywclients = self.ptys_by_fd[fd]
         try:
@@ -282,7 +282,6 @@ class TermManagerBase:
 
     def client_disconnected(self, websocket: Any) -> None:
         """Override this to e.g. kill terminals on client disconnection."""
-        pass
 
     async def shutdown(self) -> None:
         """Shutdown the manager."""
@@ -321,7 +320,7 @@ class SingleTermManager(TermManagerBase):
         self.terminal = None
 
 
-class MaxTerminalsReached(Exception):  # noqa
+class MaxTerminalsReached(Exception):
     """An error raised when we exceed the max number of terminals."""
 
     def __init__(self, max_terminals: int) -> None:
@@ -374,7 +373,7 @@ class NamedTermManager(TermManagerBase):
 
     def get_terminal(self, term_name: str) -> PtyWithClients:  # type:ignore[override]
         """Get or create a terminal by name."""
-        assert term_name is not None  # noqa
+        assert term_name is not None
 
         if term_name in self.terminals:
             return self.terminals[term_name]
@@ -424,7 +423,7 @@ class NamedTermManager(TermManagerBase):
         super().on_eof(ptywclients)
         name = ptywclients.term_name
         self.log.info("Terminal %s closed", name)
-        assert name is not None  # noqa: S101
+        assert name is not None
         self.terminals.pop(name, None)
 
     async def kill_all(self) -> None:
