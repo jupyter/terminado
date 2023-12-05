@@ -1,12 +1,13 @@
-import os.path
 import webbrowser
+from pathlib import Path
 
 import tornado.ioloop
 
 import terminado
 
-STATIC_DIR = os.path.join(os.path.dirname(terminado.__file__), "_static")
-TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+HERE = Path(terminado.__file__).parent
+STATIC_DIR = HERE / "_static"
+TEMPLATE_DIR = HERE / "templates"
 
 
 def run_and_show_browser(url, term_manager):
@@ -15,7 +16,7 @@ def run_and_show_browser(url, term_manager):
     try:
         loop.start()
     except KeyboardInterrupt:
-        print(" Shutting down on SIGINT")
+        print(" Shutting down on SIGINT")  # noqa: T201
     finally:
         term_manager.shutdown()
         loop.close()

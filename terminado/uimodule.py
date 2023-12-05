@@ -8,7 +8,7 @@ http://www.tornadoweb.org/en/stable/guide/templates.html#ui-modules
 # Distributed under the terms of the Simplified BSD License.
 from __future__ import annotations
 
-import os.path
+from pathlib import Path
 
 import tornado.web
 
@@ -31,6 +31,6 @@ class Terminal(tornado.web.UIModule):
 
     def embedded_javascript(self) -> str:
         """Get the embedded JS content as a string."""
-        file = os.path.join(os.path.dirname(__file__), "uimod_embed.js")
-        with open(file) as f:
+        file = Path(__file__).parent / "uimod_embed.js"
+        with file.open() as f:
             return f.read()

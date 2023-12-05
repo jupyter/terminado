@@ -324,7 +324,7 @@ class UniqueTermTests(TermTestCase):
         bytes_discarded, other = await tm.discard_stdout()
         # Echo won't actually output anything on Windows.
         if "win" not in platform:
-            assert bytes_discarded > 10000  # noqa
+            assert bytes_discarded > 10000
         assert other == []
         tm.close()
 

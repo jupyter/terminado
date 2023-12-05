@@ -44,10 +44,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
     def origin_check(self, origin: str | None = None) -> bool:
         """Deprecated: backward-compat for terminado <= 0.5."""
         origin = origin or self.request.headers.get("Origin", "")
-        assert origin is not None  # noqa: S101
+        assert origin is not None
         return self.check_origin(origin)
 
-    def open(self, url_component: Any = None) -> None:  # type:ignore[override]  # noqa
+    def open(self, url_component: Any = None) -> None:  # type:ignore[override]
         """Websocket connection opened.
 
         Call our terminal manager to get a terminal, and connect to it as a
@@ -98,7 +98,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         # logging.info("TermSocket.on_message: %s - (%s) %s", self.term_name, type(message), len(message) if isinstance(message, bytes) else message[:250])
         command = json.loads(message)
         msg_type = command[0]
-        assert self.terminal is not None  # noqa
+        assert self.terminal is not None
         if msg_type == "stdin":
             yield self.stdin_to_ptyproc(command[1])
             if self._enable_output_logging:
