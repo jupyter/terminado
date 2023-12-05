@@ -248,6 +248,7 @@ class NamedTermTests(TermTestCase):
         assert killed
         assert not terminal.ptyproc.isalive()
         assert terminal.ptyproc.closed
+        [tm.close() for tm in tms]
 
     @tornado.testing.gen_test
     @pytest.mark.skipif("linux" not in platform, reason="It only works on Linux")
@@ -260,6 +261,8 @@ class NamedTermTests(TermTestCase):
         tm = await self.get_term_client(urls[MAX_TERMS])
         msg = await tm.read_msg()
         self.assertEqual(msg, None)  # Connection closed
+        tm.close()
+        [tm.close() for tm in tms]
 
 
 class SingleTermTests(TermTestCase):
@@ -273,6 +276,7 @@ class SingleTermTests(TermTestCase):
         killed = await self.single_tm.terminal.terminate(True)
         assert killed
         assert self.single_tm.terminal.ptyproc.closed
+        [tm.close() for tm in tms]
 
 
 class UniqueTermTests(TermTestCase):
@@ -281,6 +285,7 @@ class UniqueTermTests(TermTestCase):
         tms = await self.get_term_clients(["/unique", "/unique"])
         pids = await self.get_pids(tms)
         self.assertNotEqual(pids[0], pids[1])
+        [tm.close() for tm in tms]
 
     @tornado.testing.gen_test
     @pytest.mark.skipif("linux" not in platform, reason="It only works on Linux")
@@ -303,6 +308,7 @@ class UniqueTermTests(TermTestCase):
         tm = await self.get_term_client("/unique")
         msg = await tm.read_msg()
         self.assertEqual(msg[0], "setup")
+        tm.close()
 
     @tornado.testing.gen_test
     @pytest.mark.timeout(timeout=ASYNC_TEST_TIMEOUT, method="thread")
