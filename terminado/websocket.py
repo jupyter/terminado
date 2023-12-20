@@ -65,6 +65,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal.clients.append(self)
         self.send_json_message(["setup", {}])
         self._logger.info("TermSocket.open: Opened %s", self.term_name)
+        self.cursor_position = 0
         # Now drain the preopen buffer, if reconnect.
         buffered = ""
         preopen_buffer = self.terminal.read_buffer.copy()
@@ -105,8 +106,27 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                 if command[1] == "\r":
                     self.log_terminal_output(f"STDIN: {self._user_command}")
                     self._user_command = ""
+                    self.cursor_position = 0
+                elif command[1] == "\x7f":
+                    # delete
+                    if self.cursor_position > 0:
+                        self._user_command = (self._user_command[:self.cursor_position - 1] +
+                                              self._user_command[self.cursor_position:])
+                        self.cursor_position -= 1
+                elif command[1] == "\x1bOD":
+                    # move left
+                    if self.cursor_position > 0:
+                        self.cursor_position -= 1
+                elif command[1] == "\x1bOC":
+                    # move right
+                    if self.cursor_position < len(self._user_command):
+                        self.cursor_position += 1
                 else:
-                    self._user_command += command[1]
+                    # insert
+                    self._user_command = (self._user_command[:self.cursor_position] +
+                                          command[1] +
+                                          self._user_command[self.cursor_position:])
+                    self.cursor_position += 1
         elif msg_type == "set_size":
             self.size = command[1:3]
             self.terminal.resize_to_smallest()
