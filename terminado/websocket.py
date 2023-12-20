@@ -110,8 +110,10 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                 elif command[1] == "\x7f":
                     # delete
                     if self.cursor_position > 0:
-                        self._user_command = (self._user_command[:self.cursor_position - 1] +
-                                              self._user_command[self.cursor_position:])
+                        self._user_command = (
+                            self._user_command[: self.cursor_position - 1]
+                            + self._user_command[self.cursor_position :]
+                        )
                         self.cursor_position -= 1
                 elif command[1] == "\x1bOD":
                     # move left
@@ -123,9 +125,11 @@ class TermSocket(tornado.websocket.WebSocketHandler):
                         self.cursor_position += 1
                 else:
                     # insert
-                    self._user_command = (self._user_command[:self.cursor_position] +
-                                          command[1] +
-                                          self._user_command[self.cursor_position:])
+                    self._user_command = (
+                        self._user_command[: self.cursor_position]
+                        + command[1]
+                        + self._user_command[self.cursor_position :]
+                    )
                     self.cursor_position += 1
         elif msg_type == "set_size":
             self.size = command[1:3]
