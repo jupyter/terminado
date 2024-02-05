@@ -21,7 +21,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.27.2
+    rev: 0.27.4
     hooks:
       - id: check-github-workflows
 
@@ -31,7 +31,7 @@ repos:
       - id: mdformat
 
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: "v3.0.3"
+    rev: "v4.0.0-alpha.8"
     hooks:
       - id: prettier
         types_or: [yaml, html, json]
@@ -49,7 +49,7 @@ repos:
         args: ["-L", "incase"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.7.1"
+    rev: "v1.8.0"
     hooks:
       - id: mypy
         files: "^terminado"
@@ -65,7 +65,7 @@ repos:
       - id: rst-inline-touching-normal
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.7
+    rev: v0.2.0
     hooks:
       - id: ruff
         types_or: [python, jupyter]
@@ -74,7 +74,7 @@ repos:
         types_or: [python, jupyter]
 
   - repo: https://github.com/scientific-python/cookie
-    rev: "2023.11.17"
+    rev: "2024.01.24"
     hooks:
       - id: sp-repo-review
         additional_dependencies: ["repo-review[cli]"]
