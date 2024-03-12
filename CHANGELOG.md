@@ -2,6 +2,24 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.18.1
+
+([Full Changelog](https://github.com/jupyter/terminado/compare/v0.18.0...6140cab7db7d7e0a0fa807bfcdb4db5bea1005e0))
+
+### Maintenance and upkeep improvements
+
+- Update Release Scripts [#238](https://github.com/jupyter/terminado/pull/238) ([@blink1073](https://github.com/blink1073))
+- chore: update pre-commit hooks [#237](https://github.com/jupyter/terminado/pull/237) ([@pre-commit-ci](https://github.com/pre-commit-ci))
+- Update pre-commit and ruff config [#235](https://github.com/jupyter/terminado/pull/235) ([@blink1073](https://github.com/blink1073))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2023-11-10&to=2024-03-12&type=c))
+
+[@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2023-11-10..2024-03-12&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2023-11-10..2024-03-12&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.18.0
 
 ([Full Changelog](https://github.com/jupyter/terminado/compare/v0.17.1...e1a98d4078cf72e7721d46c20d78daf813a297ef))
@@ -27,8 +45,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyter/terminado/graphs/contributors?from=2022-12-05&to=2023-11-10&type=c))
 
 [@blink1073](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Ablink1073+updated%3A2022-12-05..2023-11-10&type=Issues) | [@dcsaba89](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adcsaba89+updated%3A2022-12-05..2023-11-10&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Adependabot+updated%3A2022-12-05..2023-11-10&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyter%2Fterminado+involves%3Apre-commit-ci+updated%3A2022-12-05..2023-11-10&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.17.1
 
