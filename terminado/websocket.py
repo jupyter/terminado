@@ -5,14 +5,13 @@
 # Distributed under the terms of the Simplified BSD License.
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 from typing import TYPE_CHECKING, Any
 
 import tornado.websocket
-from tornado import gen
-from tornado.concurrent import run_on_executor
 
 if TYPE_CHECKING:
     from terminado.management import PtyWithClients, TermManagerBase
@@ -88,8 +87,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         if self._enable_output_logging and content[0] == "stdout" and isinstance(content[1], str):
             self.log_terminal_output(f"STDOUT: {content[1]}")
 
-    @gen.coroutine
-    def on_message(self, message: str) -> None:  # type:ignore[misc]
+    async def on_message(self, message: str) -> None:  # type:ignore[misc]
         """Handle incoming websocket message
 
         We send JSON arrays, where the first element is a string indicating
@@ -100,7 +98,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         msg_type = command[0]
         assert self.terminal is not None
         if msg_type == "stdin":
-            yield self.stdin_to_ptyproc(command[1])
+            await self.stdin_to_ptyproc(command[1])
             if self._enable_output_logging:
                 if command[1] == "\r":
                     self.log_terminal_output(f"STDIN: {self._user_command}")
@@ -137,8 +135,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         """
         self._logger.debug(log)
 
-    @run_on_executor(executor="_blocking_io_executor")
-    def stdin_to_ptyproc(self, text: str) -> None:
+    async def stdin_to_ptyproc(self, text: str) -> None:
         """Handles stdin messages sent on the websocket.
 
         This is a blocking call that should NOT be performed inside the
@@ -146,4 +143,8 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         asynchronously to prevent blocking on the PTY buffer.
         """
         if self.terminal is not None:
-            self.terminal.ptyproc.write(text)
+            await asyncio.get_running_loop().run_in_executor(
+                self._blocking_io_executor,
+                self.terminal.ptyproc.write,
+                text,
+            )
