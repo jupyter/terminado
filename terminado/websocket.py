@@ -65,14 +65,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         self.terminal.clients.append(self)
         self.send_json_message(["setup", {}])
         self._logger.info("TermSocket.open: Opened %s", self.term_name)
-        # Now drain the preopen buffer, if reconnect.
-        buffered = ""
-        preopen_buffer = self.terminal.read_buffer.copy()
-        while True:
-            if not preopen_buffer:
-                break
-            s = preopen_buffer.popleft()
-            buffered += s
+        buffered = self.terminal.replay()
         if buffered:
             self.on_pty_read(buffered)
 
