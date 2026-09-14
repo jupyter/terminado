@@ -298,6 +298,7 @@ class UniqueTermTests(TermTestCase):
         tm = await self.get_term_client("/unique")
         msg = await tm.read_msg()
         self.assertEqual(msg, None)  # Connection closed
+        tm.close()
 
         # Close one
         tms[0].close()
@@ -309,6 +310,7 @@ class UniqueTermTests(TermTestCase):
         msg = await tm.read_msg()
         self.assertEqual(msg[0], "setup")
         tm.close()
+        [tm.close() for tm in tms]
 
     @tornado.testing.gen_test
     @pytest.mark.timeout(timeout=ASYNC_TEST_TIMEOUT, method="thread")
@@ -332,6 +334,61 @@ class UniqueTermTests(TermTestCase):
         if "win" not in platform:
             assert bytes_discarded > 10000
         assert other == []
+        tm.close()
+
+
+class ReplayTests(TermTestCase):
+    # printf writes a cursor position query, a device attributes query and
+    # a background colour query, each of which makes the terminal reply.
+    PRINTF = "printf 'before\\033[6n\\033[c\\033]11;?\\033\\\\after\\n'\n"
+    QUERIES = ("\x1b[6n", "\x1b[c", "\x1b]11;?\x1b\\")
+    OUTPUT = "before" + "".join(QUERIES) + "after"
+
+    async def read_replay(self, tm):
+        """Read the messages a client gets on connection, return the replayed output."""
+        msg = await tm.read_msg()
+        self.assertEqual(msg, ["setup", {}])
+        msg = await tm.read_msg()
+        self.assertEqual(msg[0], "stdout")
+        return msg[1]
+
+    @tornado.testing.gen_test
+    async def test_reconnect_replays_output_without_queries(self):
+        tm = await self.get_term_client("/named/replay")
+        await tm.read_all_msg()
+        await tm.write_stdin(self.PRINTF)
+        (stdout, _) = await tm.read_stdout()
+        assert self.OUTPUT in stdout
+        tm.close()
+
+        tm = await self.get_term_client("/named/replay")
+        replay = await self.read_replay(tm)
+        assert "beforeafter" in replay
+        for query in self.QUERIES:
+            assert query not in replay
+        tm.close()
+
+    @tornado.testing.gen_test
+    async def test_queries_no_client_received_are_replayed_once(self):
+        _, terminal = self.named_tm.new_named_terminal(name="unseen")
+        terminal.ptyproc.write(self.PRINTF)
+        deadline = IOLoop.current().time() + ASYNC_TEST_TIMEOUT
+        while self.OUTPUT not in "".join(terminal.read_buffer):
+            assert IOLoop.current().time() < deadline
+            await asyncio.sleep(0.1)
+
+        # The program that asked may still wait for the replies: the first
+        # client answers them.
+        tm = await self.get_term_client("/named/unseen")
+        replay = await self.read_replay(tm)
+        assert self.OUTPUT in replay
+        tm.close()
+
+        tm = await self.get_term_client("/named/unseen")
+        replay = await self.read_replay(tm)
+        assert "beforeafter" in replay
+        for query in self.QUERIES:
+            assert query not in replay
         tm.close()
 
 
