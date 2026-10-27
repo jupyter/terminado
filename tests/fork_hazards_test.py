@@ -1,8 +1,10 @@
 """Opening a terminal must not run code that belongs to other threads of the server.
 
-With fork(), the child is a copy of the server with only the calling thread. Before
-the shell starts, Python frees what the other threads owned, so their finalizers run
-in the copy, which can hang on a lock or change files that the server still uses.
+fork() makes a child process with only one thread: the thread that called fork(). The
+child also has a copy of all the memory of the server, including the thread-local objects
+of the other threads. Before the shell starts, Python frees these objects, so their
+finalizers run in the child. A finalizer can then wait forever for a lock, or change files
+that the server still uses.
 """
 
 # Copyright (c) Jupyter Development Team
@@ -21,15 +23,10 @@ pytestmark = pytest.mark.skipif(
 
 
 def run_script(script, cwd):
-    """Run ``script`` in a new interpreter and return its output."""
-    result = subprocess.run(  # noqa: S603
-        [sys.executable, "-c", textwrap.dedent(script)],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
-    )
+    """Run `script` in a new Python process and return its output."""
+    argv = [sys.executable, "-c", textwrap.dedent(script)]
+    # Keep this call on one line: some Ruff versions report S603 at the first argument.
+    result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=120, check=False)  # noqa: S603
     assert result.returncode == 0, result.stderr
     return result.stdout
 
@@ -45,7 +42,7 @@ def test_lock_held_by_another_thread_does_not_hang(tmp_path):
 
     from terminado.management import PtyWithClients
 
-    # A stuck child never calls exec, so kill it after a while to end the test.
+    # A child that hangs does not call `exec`, so kill it after 15 s to end the test.
     forked = []
     original_fork = pty.fork
 
