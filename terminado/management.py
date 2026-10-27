@@ -36,6 +36,8 @@ except ImportError:
 
 from tornado.ioloop import IOLoop
 
+from .queries import strip_queries
+
 ENV_PREFIX = "PYXTERM_"  # Environment variable prefix
 
 # TERM is set according to xterm.js capabilities
@@ -52,6 +54,8 @@ class PtyWithClients:
         self.clients: list[Any] = []
         # Use read_buffer to store historical messages for reconnection
         self.read_buffer: deque[str] = deque([], maxlen=1000)
+        # Trailing read_buffer entries that no client has received yet
+        self.undelivered_reads = 0
         kwargs = {"argv": argv, "env": env or [], "cwd": cwd}
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
@@ -60,6 +64,19 @@ class PtyWithClients:
         # we replace the inner decoder of PtyProcessUnicode
         # to allow non-strict decode.
         self.ptyproc.decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+
+    def replay(self) -> str:
+        """Return the buffered output for a client that has just connected.
+
+        Terminal queries are stripped from the reads that an earlier client
+        already received, so that the new client does not answer them again.
+        Reads that no client has received are returned verbatim, because the
+        program that sent a query may still be waiting for the reply.
+        """
+        reads = list(self.read_buffer)
+        seen = len(reads) - self.undelivered_reads
+        self.undelivered_reads = 0
+        return strip_queries("".join(reads[:seen])) + "".join(reads[seen:])
 
     def resize_to_smallest(self) -> None:
         """Set the terminal size to that of the smallest client dimensions.
@@ -261,6 +278,10 @@ class TermManagerBase:
             self.pre_pty_read_hook(ptywclients)
             s = ptywclients.ptyproc.read(65536)
             ptywclients.read_buffer.append(s)
+            if not ptywclients.clients:
+                ptywclients.undelivered_reads = min(
+                    ptywclients.undelivered_reads + 1, len(ptywclients.read_buffer)
+                )
             for client in ptywclients.clients:
                 client.on_pty_read(s)
         except EOFError:
