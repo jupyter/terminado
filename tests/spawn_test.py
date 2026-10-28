@@ -36,6 +36,21 @@ for fd in range(3, 1024):
     print(fd)
 """
 
+# Runs in the helper before HELPER. The helper then sees the file descriptor directories
+# of FreeBSD without fdescfs: there is no /proc/self/fd, and /dev/fd lists only 0, 1 and 2.
+FREEBSD_WITHOUT_FDESCFS = """\
+import os, sys
+sys.platform = "freebsd14"
+real_isdir, real_listdir = os.path.isdir, os.listdir
+def isdir(path):
+    return path != "/proc/self/fd" and real_isdir(path)
+def listdir(path):
+    if path == "/proc/self/fd":
+        raise FileNotFoundError(path)
+    return ["0", "1", "2"] if path == "/dev/fd" else real_listdir(path)
+os.path.isdir, os.listdir = isdir, listdir
+"""
+
 # Runs in a new interpreter with file descriptors 0 to 3 closed, so the terminal and the
 # error pipe of the first terminal get numbers that the child replaces. Writes the file
 # name in the error of the first terminal and the output of a second terminal to
@@ -169,6 +184,12 @@ def test_sigpipe_is_not_ignored():
 
 
 def test_file_descriptors_are_not_inherited():
+    assert open_descriptors() == []
+
+
+@requires_spawn
+def test_static_dev_fd_is_not_trusted(monkeypatch):
+    monkeypatch.setattr(_spawn, "HELPER", FREEBSD_WITHOUT_FDESCFS + _spawn.HELPER)
     assert open_descriptors() == []
 
 

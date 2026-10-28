@@ -31,9 +31,11 @@ if sys.platform != "win32":
 # spawn() starts the helper as `python -I -S -c HELPER cwd command [arg ...]`.
 # File descriptors 0, 1 and 2 are the terminal, and file descriptor 3 is the write end
 # of the error pipe. The helper closes only the file descriptors that it finds in
-# /proc/self/fd or /dev/fd, because os.closerange() can be slow. When Python cannot use
-# close_range(), os.closerange() calls close() for every number up to the limit, and
-# this takes more than 100 ms when the limit is high.
+# /proc/self/fd, or in /dev/fd on macOS, because os.closerange() can be slow. When Python
+# cannot use close_range(), os.closerange() calls close() for every number up to the
+# limit, and this takes more than 100 ms when the limit is high. On FreeBSD, NetBSD,
+# OpenBSD and DragonFly, /dev/fd can be a static directory that does not list all open
+# file descriptors.
 HELPER = """\
 import fcntl, os, signal, sys, termios
 cwd, command, *args = sys.argv[1:]
@@ -46,7 +48,7 @@ try:
         if hasattr(signal, name):
             signal.signal(getattr(signal, name), signal.SIG_DFL)
     try:
-        fds = os.listdir("/proc/self/fd" if os.path.isdir("/proc/self/fd") else "/dev/fd")
+        fds = os.listdir("/dev/fd" if sys.platform == "darwin" else "/proc/self/fd")
     except OSError:
         max_fd = os.sysconf("SC_OPEN_MAX")
         os.closerange(4, max_fd if 0 < max_fd < 1048576 else 1048576)
