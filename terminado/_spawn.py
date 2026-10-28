@@ -21,7 +21,8 @@ import os
 import shutil
 import struct
 import sys
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 if sys.platform != "win32":
     import fcntl
