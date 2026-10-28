@@ -32,17 +32,24 @@ if sys.platform != "win32":
 
 log = logging.getLogger(__name__)
 
-# spawn() starts the helper as `python -I -S -c HELPER cwd command [arg ...]`.
+# spawn() starts the helper as `python -I -S -c HELPER cwd lc_ctype command [arg ...]`.
 # File descriptors 0, 1 and 2 are the terminal, and file descriptor 3 is the write end
-# of the error pipe. The helper closes only the file descriptors that it finds in
-# /proc/self/fd, or in /dev/fd on macOS, because os.closerange() can be slow. When Python
-# cannot use close_range(), os.closerange() calls close() for every number up to the
-# limit, and this takes more than 100 ms when the limit is high. On FreeBSD, NetBSD,
-# OpenBSD and DragonFly, /dev/fd can be a static directory that does not list all open
-# file descriptors.
+# of the error pipe.
+#
+# When `env` selects the C locale, CPython sets LC_CTYPE in its own environment (PEP 538),
+# and `exec` gives that environment to the shell. So spawn() passes the LC_CTYPE entry of
+# `env` as `lc_ctype` ("LC_CTYPE=<value>", or empty when `env` has no LC_CTYPE), and the
+# helper restores LC_CTYPE from it before `exec`.
+#
+# The helper closes only the file descriptors that it finds in /proc/self/fd, or in
+# /dev/fd on macOS, because os.closerange() can be slow. When Python cannot use
+# close_range(), os.closerange() calls close() for every number up to the limit, and
+# this takes more than 100 ms when the limit is high. On FreeBSD, NetBSD, OpenBSD and
+# DragonFly, /dev/fd can be a static directory that does not list all open file
+# descriptors.
 HELPER = """\
 import fcntl, os, signal, sys, termios
-cwd, command, *args = sys.argv[1:]
+cwd, lc_ctype, command, *args = sys.argv[1:]
 try:
     os.setsid()
     fcntl.ioctl(0, termios.TIOCSCTTY, 0)
@@ -51,6 +58,10 @@ try:
     for name in ("SIGPIPE", "SIGXFSZ"):
         if hasattr(signal, name):
             signal.signal(getattr(signal, name), signal.SIG_DFL)
+    if lc_ctype:
+        os.environ["LC_CTYPE"] = lc_ctype.partition("=")[2]
+    else:
+        os.environ.pop("LC_CTYPE", None)
     try:
         fds = os.listdir("/dev/fd" if sys.platform == "darwin" else "/proc/self/fd")
     except OSError:
@@ -134,6 +145,9 @@ def spawn(
         msg = f"The command was not found or was not executable: {argv[0]}."
         raise FileNotFoundError(msg)
 
+    environment = os.environ if env is None else env
+    lc_ctype = "LC_CTYPE=" + environment["LC_CTYPE"] if "LC_CTYPE" in environment else ""
+
     master, slave = os.openpty()
     slave = _above_targets(slave)
     error_read, error_write = os.pipe()
@@ -142,8 +156,8 @@ def spawn(
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", *dimensions, 0, 0))
         pid = os.posix_spawn(
             sys.executable,
-            [sys.executable, "-I", "-S", "-c", HELPER, cwd or "", command, *argv[1:]],
-            os.environ if env is None else env,
+            [sys.executable, "-I", "-S", "-c", HELPER, cwd or "", lc_ctype, command, *argv[1:]],
+            environment,
             file_actions=[
                 (os.POSIX_SPAWN_DUP2, slave, 0),
                 (os.POSIX_SPAWN_DUP2, slave, 1),

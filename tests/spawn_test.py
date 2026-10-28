@@ -141,6 +141,17 @@ def test_cwd_and_env(tmp_path):
     assert output.split() == [os.path.realpath(tmp_path), "hello"]
 
 
+@pytest.mark.parametrize("lc_ctype", [None, "C"])
+def test_c_locale_in_env_reaches_the_shell_unchanged(lc_ctype):
+    # When env selects the C locale, CPython sets LC_CTYPE in its own environment
+    # (PEP 538), but the shell must get the value from env.
+    env = {"PATH": os.environ["PATH"]}
+    if lc_ctype is not None:
+        env["LC_CTYPE"] = lc_ctype
+    output = output_of(["sh", "-c", 'echo "${LC_CTYPE-unset}"'], env=env)
+    assert output.split() == [lc_ctype or "unset"]
+
+
 def test_session_leader_with_controlling_terminal():
     script = (
         "import os; os.close(os.open('/dev/tty', os.O_RDWR));"
