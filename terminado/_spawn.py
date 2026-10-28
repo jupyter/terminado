@@ -121,19 +121,24 @@ def available() -> bool:
 
 @functools.cache
 def _helper_starts(executable: str) -> bool:
-    """Return True if `executable` starts with the options that spawn() gives the helper.
+    """Return True if the helper starts a command when `executable` runs the helper.
 
-    For example, a relocated interpreter that needs PYTHONHOME does not start, because the
-    -I option makes the interpreter ignore PYTHONHOME.
+    This function starts `executable -I -S -c ""` in a new terminal, in the same way as
+    spawn() starts a command. For example, a relocated interpreter that needs PYTHONHOME
+    does not start, because the -I option makes the interpreter ignore PYTHONHOME. A
+    program that is not Python, for example an application that Nuitka compiled, does not
+    run the helper.
     """
-    argv = [executable, "-I", "-S", "-c", "import fcntl, termios"]
     try:
-        _, status = os.waitpid(os.posix_spawn(executable, argv, os.environ), 0)
-    except OSError:
-        status = -1
-    if status != 0:
-        log.warning("Terminals start with fork(), because %s did not start with -I -S", executable)
-    return status == 0
+        pid, master = _start(executable, [executable, "-I", "-S", "-c", ""], None, None, (24, 80))
+    except OSError as error:
+        log.warning(
+            "Terminals start with fork(), because %s did not run the helper: %s", executable, error
+        )
+        return False
+    os.close(master)
+    os.waitpid(pid, 0)
+    return True
 
 
 def _above_targets(fd: int) -> int:
@@ -234,33 +239,18 @@ def _last_line(master: int) -> str:
     return lines[-1] if lines else ""
 
 
-def spawn(
-    cls: Any,
-    argv: Sequence[str],
-    env: Mapping[str, str] | None = None,
-    cwd: str | None = None,
-    dimensions: tuple[int, int] = (24, 80),
-) -> Any:
-    """Start `argv` in a new pseudo-terminal and return a `cls` instance for the new process.
+def _start(
+    executable: str,
+    argv: list[str],
+    env: Mapping[str, str] | None,
+    cwd: str | None,
+    dimensions: tuple[int, int],
+) -> tuple[int, int]:
+    """Start `argv` in a new terminal, with `executable` as the interpreter of the helper.
 
-    Use this function instead of cls.spawn(), where `cls` is ptyprocess.PtyProcess or a
-    subclass of it, and only when available() returns True. The result is the same as with
-    pty.fork(): the child is the leader of a new session, and the terminal is the
-    controlling terminal of the child. When an OSError stops the helper before `exec`, for
-    example because the directory `cwd` does not exist, this function raises that error.
-    When the helper exits before `exec` for another reason, for example because a signal
-    ends it, this function raises OSError with the exit code and the last line that the
-    helper printed. When the helper does not call `exec` within EXEC_TIMEOUT seconds, this
-    function kills the helper and raises TimeoutError.
+    Return the process ID and the master of the terminal. `argv[0]` is the path of the
+    command. spawn() describes the errors.
     """
-    if not isinstance(argv, (list, tuple)):
-        msg = f"Expected a list or tuple for argv, got {argv!r}"
-        raise TypeError(msg)
-    command = shutil.which(argv[0])
-    if command is None:
-        msg = f"The command was not found or was not executable: {argv[0]}."
-        raise FileNotFoundError(msg)
-
     environment = _encode_environment(os.environ if env is None else env)
 
     master, slave = os.openpty()
@@ -273,8 +263,8 @@ def spawn(
         env_read = _above_targets(env_read)
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", *dimensions, 0, 0))
         pid = os.posix_spawn(
-            sys.executable,
-            [sys.executable, "-I", "-S", "-c", HELPER, cwd or "", command, *argv[1:]],
+            executable,
+            [executable, "-I", "-S", "-c", HELPER, cwd or "", *argv],
             os.environ,
             file_actions=[
                 (os.POSIX_SPAWN_DUP2, slave, 0),
@@ -316,11 +306,41 @@ def spawn(
         os.close(master)
         _, status = os.waitpid(pid, 0)
         msg = f"The helper exited with code {os.waitstatus_to_exitcode(status)}"
-        msg += f" before {command} started"
+        msg += f" before {argv[0]} started"
         if line:
             msg += f": {line}"
         raise OSError(msg)
+    return pid, master
 
+
+def spawn(
+    cls: Any,
+    argv: Sequence[str],
+    env: Mapping[str, str] | None = None,
+    cwd: str | None = None,
+    dimensions: tuple[int, int] = (24, 80),
+) -> Any:
+    """Start `argv` in a new pseudo-terminal and return a `cls` instance for the new process.
+
+    Use this function instead of cls.spawn(), where `cls` is ptyprocess.PtyProcess or a
+    subclass of it, and only when available() returns True. The result is the same as with
+    pty.fork(): the child is the leader of a new session, and the terminal is the
+    controlling terminal of the child. When an OSError stops the helper before `exec`, for
+    example because the directory `cwd` does not exist, this function raises that error.
+    When the helper exits before `exec` for another reason, for example because a signal
+    ends it, this function raises OSError with the exit code and the last line that the
+    helper printed. When the helper does not call `exec` within EXEC_TIMEOUT seconds, this
+    function kills the helper and raises TimeoutError.
+    """
+    if not isinstance(argv, (list, tuple)):
+        msg = f"Expected a list or tuple for argv, got {argv!r}"
+        raise TypeError(msg)
+    command = shutil.which(argv[0])
+    if command is None:
+        msg = f"The command was not found or was not executable: {argv[0]}."
+        raise FileNotFoundError(msg)
+
+    pid, master = _start(sys.executable, [command, *argv[1:]], env, cwd, dimensions)
     inst = cls(pid, master)
     inst.argv = [command, *argv[1:]]
     if env is not None:

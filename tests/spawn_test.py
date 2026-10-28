@@ -428,10 +428,14 @@ def test_fork_without_env_inherits_the_environment():
 
 @requires_spawn
 @pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
-def test_falls_back_to_fork_when_the_helper_does_not_start(monkeypatch, tmp_path):
-    # For example, a relocated interpreter that needs PYTHONHOME does not start with -I.
+@pytest.mark.parametrize("script", ["exit 1", "exit 0", "exec sleep 30"])
+def test_falls_back_to_fork_when_the_helper_does_not_start(monkeypatch, tmp_path, script):
+    # For example, a relocated interpreter that needs PYTHONHOME does not start with -I. A
+    # program that is not Python, for example an application that Nuitka compiled, can exit
+    # with 0 or not exit at all.
     python = tmp_path / "python"
-    python.write_text("#!/bin/sh\nexit 1\n")
+    python.write_text(f"#!/bin/sh\n{script}\n")
     python.chmod(0o755)
     monkeypatch.setattr(sys, "executable", str(python))
+    monkeypatch.setattr(_spawn, "EXEC_TIMEOUT", 1)
     assert "hello" in output_of(["sh", "-c", "echo hello"])
