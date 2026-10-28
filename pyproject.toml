@@ -8,8 +8,19 @@ dynamic = ["version"]
 readme = "README.md"
 license = { file = "LICENSE" }
 description = "Tornado websocket backend for the Xterm.js Javascript terminal emulator library."
-classifiers = [ "Environment :: Web Environment", "License :: OSI Approved :: BSD License", "Programming Language :: Python :: 3", "Topic :: Terminals :: Terminal Emulators/X Terminals",]
-requires-python = ">=3.8"
+classifiers = [
+  "Environment :: Web Environment",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Topic :: Terminals :: Terminal Emulators/X Terminals",
+]
+requires-python = ">=3.10"
 dependencies = [ "ptyprocess;os_name!='nt'", "pywinpty>=1.1.0;os_name=='nt'", "tornado>=6.1.0",]
 
 [[project.authors]]
@@ -20,9 +31,9 @@ email = "jupyter@googlegroups.com"
 Homepage = "https://github.com/jupyter/terminado"
 
 [project.optional-dependencies]
-test = [ "pytest>=7.0,<8.2", "pre-commit", "pytest-timeout",]
+test = [ "pytest>=7.0", "pre-commit", "pytest-timeout",]
 docs = [ "sphinx", "pydata-sphinx-theme", "myst_parser"]
-typing = ["mypy~=1.6", "traitlets>=5.11.1"]
+typing = ["mypy~=2.4", "traitlets>=5.11.1"]
 
 [tool.hatch.version]
 path = "terminado/_version.py"
@@ -50,7 +61,7 @@ detached = true
 dependencies = ["pre-commit"]
 [tool.hatch.envs.lint.scripts]
 build = [
-  "pre-commit run --all-files ruff",
+  "pre-commit run --all-files ruff-check",
   "pre-commit run --all-files ruff-format"
 ]
 
@@ -64,6 +75,7 @@ test = "pre-commit run --all-files --hook-stage manual mypy"
 minversion = "6.0"
 xfail_strict = true
 log_cli_level = "info"
+log_level = "INFO"
 addopts = [
   "-ra", "--durations=10", "--color=yes", "--doctest-modules",
    "--showlocals", "--strict-markers", "--strict-config"
@@ -75,6 +87,9 @@ timeout = 300
 filterwarnings = [
     "error",
     "module:unclosed <socket.socket:ResourceWarning",
+    # Spawning a pty while the server has executor threads running warns since
+    # Python 3.12, and the warning is raised under "error" since Python 3.15
+    "ignore:This process .* is multi-threaded:DeprecationWarning",
 ]
 # Restore this setting to debug failures
 # timeout_method = "thread"
@@ -99,7 +114,7 @@ source = ["terminado"]
 
 [tool.mypy]
 files = "terminado"
-python_version = "3.8"
+python_version = "3.10"
 strict = true
 enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 warn_unreachable = true
@@ -133,6 +148,7 @@ extend-select = [
 ignore = [
   "PLR",    # Design related pylint codes
   "S101",   # Use of `assert` detected
+  "UP031",  # Use format specifiers instead of percent format
 ]
 unfixable = [
   # Don't touch print statements
@@ -163,4 +179,4 @@ fail-under=100
 exclude = ["demos", "doc", "tests"]
 
 [tool.repo-review]
-ignore = [ "GH102"]
+ignore = [ "GH102", "PY004", "PP006", "SEC001"]
