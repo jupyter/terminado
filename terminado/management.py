@@ -25,8 +25,12 @@ try:
     from ptyprocess import PtyProcessUnicode  # type:ignore[import-untyped]
 
     def preexec_fn() -> None:
-        """A prexec function to set up a signal handler."""
+        """Reset SIGPIPE and SIGXFSZ to their default action, as the helper in _spawn does.
+
+        Python ignores both signals, and `exec` keeps ignored signals ignored.
+        """
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+        signal.signal(signal.SIGXFSZ, signal.SIG_DFL)
 
 except ImportError:
     try:
@@ -36,6 +40,8 @@ except ImportError:
     preexec_fn = None  # type:ignore[assignment]
 
 from tornado.ioloop import IOLoop
+
+from terminado import _spawn
 
 ENV_PREFIX = "PYXTERM_"  # Environment variable prefix
 
@@ -53,10 +59,14 @@ class PtyWithClients:
         self.clients: list[Any] = []
         # Use read_buffer to store historical messages for reconnection
         self.read_buffer: deque[str] = deque(maxlen=1000)
-        kwargs = {"argv": argv, "env": env or [], "cwd": cwd}
-        if preexec_fn is not None:
-            kwargs["preexec_fn"] = preexec_fn
-        self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
+        if _spawn.available():
+            # Do not fork: a fork can run server code in the child (see the _spawn module).
+            self.ptyproc = _spawn.spawn(PtyProcessUnicode, argv, env=env, cwd=cwd)
+        else:
+            kwargs = {"argv": argv, "env": env, "cwd": cwd}
+            if preexec_fn is not None:
+                kwargs["preexec_fn"] = preexec_fn
+            self.ptyproc = PtyProcessUnicode.spawn(**kwargs)
         # The output might not be strictly UTF-8 encoded, so
         # we replace the inner decoder of PtyProcessUnicode
         # to allow non-strict decode.
