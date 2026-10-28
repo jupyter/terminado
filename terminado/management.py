@@ -1,5 +1,5 @@
-"""Terminal management for exposing terminals to a web interface using Tornado.
-"""
+"""Terminal management for exposing terminals to a web interface using Tornado."""
+
 # Copyright (c) Jupyter Development Team
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
@@ -14,8 +14,9 @@ import select
 import signal
 import warnings
 from collections import deque
+from collections.abc import Coroutine
 from concurrent import futures
-from typing import TYPE_CHECKING, Any, Coroutine
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from terminado.websocket import TermSocket
@@ -51,7 +52,7 @@ class PtyWithClients:
         """Initialize the pty."""
         self.clients: list[Any] = []
         # Use read_buffer to store historical messages for reconnection
-        self.read_buffer: deque[str] = deque([], maxlen=1000)
+        self.read_buffer: deque[str] = deque(maxlen=1000)
         kwargs = {"argv": argv, "env": env or [], "cwd": cwd}
         if preexec_fn is not None:
             kwargs["preexec_fn"] = preexec_fn
@@ -142,7 +143,7 @@ def _update_removing(target: Any, changes: Any) -> None:
             target[k] = v
 
 
-def _poll(fd: int, timeout: float = 0.1) -> list[tuple[int, int]]:
+def _poll(fd: int, timeout: float = 0.1) -> list[tuple[int, int]] | list[int]:
     """Poll using poll() on posix systems and select() elsewhere (e.g., Windows)"""
     if os.name == "posix":
         poller = select.poll()
@@ -287,7 +288,7 @@ class TermManagerBase:
         """Shutdown the manager."""
         await self.kill_all()
         if not self._blocking_io_executor_is_external:
-            self.blocking_io_executor.shutdown(wait=False, cancel_futures=True)  # type:ignore[call-arg]
+            self.blocking_io_executor.shutdown(wait=False, cancel_futures=True)
 
     async def kill_all(self) -> None:
         """Kill all terminals."""
@@ -401,6 +402,7 @@ class NamedTermManager(TermManagerBase):
     def new_named_terminal(self, **kwargs: Any) -> tuple[str, PtyWithClients]:
         """Create a new named terminal with an automatic name."""
         name = kwargs["name"] if "name" in kwargs else self._next_available_name()
+        assert name is not None
         term = self.new_terminal(**kwargs)
         self.log.info("New terminal with automatic name: %s", name)
         term.term_name = name

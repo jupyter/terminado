@@ -1,5 +1,5 @@
-"""A single common terminal for all websockets.
-"""
+"""A single common terminal for all websockets."""
+
 import tornado.web
 
 # This demo requires tornado_xstatic and XStatic-term.js

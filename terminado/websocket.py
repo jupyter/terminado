@@ -1,5 +1,5 @@
-"""Tornado websocket handler to serve a terminal interface.
-"""
+"""Tornado websocket handler to serve a terminal interface."""
+
 # Copyright (c) Jupyter Development Team
 # Copyright (c) 2014, Ramalingam Saravanan <sarava@sarava.net>
 # Distributed under the terms of the Simplified BSD License.
@@ -47,7 +47,7 @@ class TermSocket(tornado.websocket.WebSocketHandler):
         assert origin is not None
         return self.check_origin(origin)
 
-    def open(self, url_component: Any = None) -> None:  # type:ignore[override]
+    def open(self, url_component: Any = None) -> None:
         """Websocket connection opened.
 
         Call our terminal manager to get a terminal, and connect to it as a
