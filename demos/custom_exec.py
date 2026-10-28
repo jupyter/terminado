@@ -1,5 +1,5 @@
-"""Using a custom thread pool for subprocess writes.
-"""
+"""Using a custom thread pool for subprocess writes."""
+
 from concurrent import futures
 
 import tornado.web

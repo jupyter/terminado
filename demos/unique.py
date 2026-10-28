@@ -1,5 +1,5 @@
-"""A separate terminal for every websocket opened.
-"""
+"""A separate terminal for every websocket opened."""
+
 import tornado.web
 
 # This demo requires tornado_xstatic and XStatic-term.js
