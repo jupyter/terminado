@@ -5,10 +5,12 @@
 
 import errno
 import os
+import shlex
 import signal
 import subprocess
 import sys
 import threading
+import time
 
 import pytest
 
@@ -231,6 +233,22 @@ def test_missing_cwd(tmp_path):
     with pytest.raises(FileNotFoundError) as error:
         PtyWithClients(["sh"], cwd=str(missing))
     assert error.value.filename == str(missing)
+
+
+@requires_spawn
+def test_waiting_for_the_helper_has_a_timeout(monkeypatch, tmp_path):
+    # This wrapper runs Python as a child, so it keeps the error pipe open while the
+    # command runs. A helper that waits in chdir() for a stalled network mount does the
+    # same.
+    python = tmp_path / "python"
+    python.write_text(f'#!/bin/sh\n{shlex.quote(sys.executable)} "$@"\n')
+    python.chmod(0o755)
+    monkeypatch.setattr(sys, "executable", str(python))
+    monkeypatch.setattr(_spawn, "EXEC_TIMEOUT", 1, raising=False)
+    start = time.monotonic()
+    with pytest.raises(TimeoutError):
+        PtyWithClients(["sleep", "5"], env=dict(os.environ))
+    assert time.monotonic() - start < 4
 
 
 @pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
