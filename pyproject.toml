@@ -87,9 +87,6 @@ timeout = 300
 filterwarnings = [
     "error",
     "module:unclosed <socket.socket:ResourceWarning",
-    # Spawning a pty while the server has executor threads running warns since
-    # Python 3.12, and the warning is raised under "error" since Python 3.15
-    "ignore:This process .* is multi-threaded:DeprecationWarning",
 ]
 # Restore this setting to debug failures
 # timeout_method = "thread"
