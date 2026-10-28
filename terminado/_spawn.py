@@ -17,10 +17,12 @@ child.
 # Distributed under the terms of the Simplified BSD License.
 from __future__ import annotations
 
+import contextlib
 import errno
 import functools
 import logging
 import os
+import re
 import selectors
 import shutil
 import signal
@@ -45,6 +47,12 @@ EXEC_TIMEOUT = 30
 # spawn() starts the helper as `python -I -S -c HELPER cwd command [arg ...]`. File
 # descriptors 0, 1 and 2 are the terminal, file descriptor 3 is the write end of the error
 # pipe, and file descriptor 4 is the read end of the environment pipe.
+#
+# Right before `exec`, the helper writes a NUL byte to the error pipe. When an OSError
+# stops the helper, also an OSError from `exec`, the helper writes `errno:filename` to the
+# error pipe and exits. So spawn() reads a NUL byte and then EOF when `exec` succeeds, an
+# error when an OSError stops the helper, and EOF with no data when the helper exits for
+# another reason, for example because a signal ends it or the interpreter does not start.
 #
 # The helper runs with the environment of this process, because available() checks that
 # the interpreter starts with this environment. The helper does not run with `env`, for
@@ -102,6 +110,7 @@ try:
                 except OSError:
                     pass
     fcntl.fcntl(3, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
+    os.write(3, b"\\0")
     os.execve(command, [command, *args], env)
 except OSError as e:
     os.write(3, b"%d:" % (e.errno or 0) + os.fsencode(e.filename or ""))
@@ -189,13 +198,13 @@ def _wait_for_exec(error_read: int, env_write: int, environment: bytes) -> bytes
     """Write `environment` to the helper, and return what the helper writes to the error pipe.
 
     This function closes `env_write` after the last byte, because the helper reads the
-    environment pipe until EOF. The read from the error pipe returns no data when `exec`
-    succeeds, because `exec` closes the write end of the error pipe. When an OSError stops
-    the helper, the read returns the error that the helper wrote. When the helper does not
-    call `exec` within EXEC_TIMEOUT seconds, this function returns None.
+    environment pipe until EOF. This function reads the error pipe until EOF. EOF comes when
+    `exec` closes the write end of the error pipe, or when the helper exits. When the helper
+    does not call `exec` within EXEC_TIMEOUT seconds, this function returns None.
     """
     deadline = time.monotonic() + EXEC_TIMEOUT
     unsent = memoryview(environment)
+    report = b""
     with os.fdopen(env_write, "wb", buffering=0) as pipe, selectors.DefaultSelector() as selector:
         os.set_blocking(env_write, False)
         selector.register(error_read, selectors.EVENT_READ)
@@ -203,7 +212,11 @@ def _wait_for_exec(error_read: int, env_write: int, environment: bytes) -> bytes
         while ready := selector.select(deadline - time.monotonic()):
             for key, _ in ready:
                 if key.fileobj is not pipe:
-                    return os.read(error_read, 4096)
+                    data = os.read(error_read, 4096)
+                    if not data:
+                        return report
+                    report += data
+                    continue
                 try:
                     unsent = unsent[pipe.write(unsent) or 0 :]
                 except BrokenPipeError:
@@ -213,6 +226,23 @@ def _wait_for_exec(error_read: int, env_write: int, environment: bytes) -> bytes
                     selector.unregister(pipe)
                     pipe.close()
     return None
+
+
+def _last_line(master: int) -> str:
+    """Return the last line that the helper printed to the terminal, without colors.
+
+    Call this function only after the helper has exited.
+    """
+    output = b""
+    os.set_blocking(master, False)
+    # On Linux, the read raises EIO when no process has the terminal open and no output is
+    # left.
+    with contextlib.suppress(OSError):
+        while chunk := os.read(master, 65536):
+            output += chunk
+    text = re.sub(r"\x1b\[[0-9;]*m", "", output.decode(errors="replace"))
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return lines[-1] if lines else ""
 
 
 def spawn(
@@ -229,8 +259,10 @@ def spawn(
     pty.fork(): the child is the leader of a new session, and the terminal is the
     controlling terminal of the child. When an OSError stops the helper before `exec`, for
     example because the directory `cwd` does not exist, this function raises that error.
-    When the helper does not call `exec` within EXEC_TIMEOUT seconds, this function kills
-    the helper and raises TimeoutError.
+    When the helper exits before `exec` for another reason, for example because a signal
+    ends it, this function raises OSError with the exit code and the last line that the
+    helper printed. When the helper does not call `exec` within EXEC_TIMEOUT seconds, this
+    function kills the helper and raises TimeoutError.
     """
     if not isinstance(argv, (list, tuple)):
         msg = f"Expected a list or tuple for argv, got {argv!r}"
@@ -271,23 +303,34 @@ def spawn(
         _close(slave, error_write, env_read)
 
     try:
-        error = _wait_for_exec(error_read, env_write, environment)
+        report = _wait_for_exec(error_read, env_write, environment)
     except BaseException:
         os.close(master)
         _kill(pid)
         raise
     finally:
         os.close(error_read)
-    if error is None:
+    if report is None:
         os.close(master)
         _kill(pid)
         msg = f"The terminal did not start within {EXEC_TIMEOUT} s"
         raise TimeoutError(errno.ETIMEDOUT, msg)
+    error = report.removeprefix(b"\0")
     if error:
         os.close(master)
         os.waitpid(pid, 0)
         code, _, filename = error.partition(b":")
         raise OSError(int(code), os.strerror(int(code)), os.fsdecode(filename) or None)
+    if not report:
+        # The helper exited before `exec`, and no OSError stopped it.
+        line = _last_line(master)
+        os.close(master)
+        _, status = os.waitpid(pid, 0)
+        msg = f"The helper exited with code {os.waitstatus_to_exitcode(status)}"
+        msg += f" before {command} started"
+        if line:
+            msg += f": {line}"
+        raise OSError(msg)
 
     inst = cls(pid, master)
     inst.argv = [command, *argv[1:]]

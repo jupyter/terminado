@@ -321,6 +321,21 @@ def test_invalid_executable(tmp_path):
 
 @requires_spawn
 @pytest.mark.parametrize(
+    ("code", "message"),
+    [
+        ("raise RuntimeError('broken')", "code 1 before .*: RuntimeError: broken$"),
+        ("import os; os.kill(os.getpid(), 9)", "code -9 before"),
+    ],
+)
+def test_helper_that_exits_before_exec(monkeypatch, code, message):
+    # For example, the interpreter does not start, or a signal ends the helper.
+    monkeypatch.setattr(_spawn, "HELPER", f"{code}\n{_spawn.HELPER}")
+    with pytest.raises(OSError, match=message):
+        PtyWithClients(["sh", "-c", "echo started"], env=dict(os.environ))
+
+
+@requires_spawn
+@pytest.mark.parametrize(
     ("env", "message"),
     [({"A=B": "1"}, "illegal environment variable name"), ({"A": "1\0"}, "embedded null byte")],
 )
