@@ -29,7 +29,7 @@ JS:
 
 Local Installation:
 
-> $ pip install -e .\[test\]
+> $ pip install -e .[test]
 
 Usage example:
 
