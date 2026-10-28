@@ -44,9 +44,11 @@ log = logging.getLogger(__name__)
 # stalled network mount can block the helper with no time limit.
 EXEC_TIMEOUT = 30
 
-# spawn() starts the helper as `python -I -S -c HELPER cwd command [arg ...]`. File
-# descriptors 0, 1 and 2 are the terminal, 3 is the write end of the error pipe, and 4 is
-# the read end of the environment pipe.
+# spawn() starts the helper as `python -I -S -X utf8 -c HELPER cwd command [arg ...]`.
+# File descriptors 0, 1 and 2 are the terminal, 3 is the write end of the error pipe, and
+# 4 is the read end of the environment pipe. With -X utf8, cwd and the arguments keep
+# their bytes in every locale. Without it, Python 3.14 and older can change or reject some
+# of these bytes in a legacy multibyte locale, for example ja_JP.eucJP.
 #
 # Right before `exec`, the helper writes a NUL byte to the error pipe. When an OSError
 # stops the helper, the helper writes `errno:filename` and exits. EOF with no data means
@@ -264,7 +266,7 @@ def _start(
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", *dimensions, 0, 0))
         pid = os.posix_spawn(
             executable,
-            [executable, "-I", "-S", "-c", HELPER, cwd or "", *argv],
+            [executable, "-I", "-S", "-X", "utf8", "-c", HELPER, cwd or "", *argv],
             os.environ,
             file_actions=[
                 (os.POSIX_SPAWN_DUP2, slave, 0),
