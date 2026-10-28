@@ -94,6 +94,34 @@ except EOFError:
 print(output)
 """
 
+# This script runs in a new session. Like a Jupyter server, the script handles SIGINT
+# itself. It sends SIGINT to its own process group right after posix_spawn() starts the
+# helper, as Ctrl-C in the terminal of the server does. Then it writes the output of the
+# terminal to result.txt.
+CTRL_C_IN_THE_SERVER = """\
+import os, signal
+from terminado import _spawn
+from terminado.management import PtyWithClients
+signal.signal(signal.SIGINT, lambda *args: None)
+# Run the check in available() now, so that the check does not get the SIGINT.
+assert _spawn.available()
+real_posix_spawn = os.posix_spawn
+def posix_spawn(*args, **kwargs):
+    pid = real_posix_spawn(*args, **kwargs)
+    os.killpg(os.getpgrp(), signal.SIGINT)
+    return pid
+os.posix_spawn = posix_spawn
+terminal = PtyWithClients(["sh", "-c", "echo started"], env=dict(os.environ))
+output = ""
+try:
+    while True:
+        output += terminal.ptyproc.read(65536)
+except EOFError:
+    pass
+with open("result.txt", "w") as f:
+    f.write(output)
+"""
+
 
 def read_until_eof(terminal):
     """Return everything that the terminal prints until its program exits."""
@@ -180,6 +208,14 @@ def test_c_locale_in_env_reaches_the_shell_unchanged(lc_ctype):
     assert output.split() == [lc_ctype or "unset"]
 
 
+def test_pyvenv_launcher_in_env_reaches_the_shell_unchanged():
+    # Since Python 3.11, CPython removes __PYVENV_LAUNCHER__ from its own environment when
+    # it starts.
+    env = {**os.environ, "__PYVENV_LAUNCHER__": sys.executable}
+    output = output_of(["sh", "-c", 'echo "${__PYVENV_LAUNCHER__-unset}"'], env=env)
+    assert output.strip() == sys.executable
+
+
 def test_session_leader_with_controlling_terminal():
     script = (
         "import os; os.close(os.open('/dev/tty', os.O_RDWR));"
@@ -206,6 +242,13 @@ def test_blocked_signals_are_not_inherited():
     thread.start()
     thread.join()
     assert stop_with_ctrl_c(terminals[0]) == signal.SIGINT
+
+
+@requires_spawn
+def test_ctrl_c_in_the_server_does_not_stop_the_helper(tmp_path):
+    argv = [sys.executable, "-c", CTRL_C_IN_THE_SERVER]
+    subprocess.run(argv, cwd=tmp_path, timeout=60, check=True, start_new_session=True)  # noqa: S603
+    assert (tmp_path / "result.txt").read_text().split() == ["started"]
 
 
 def test_exit_status():
@@ -262,6 +305,17 @@ def test_invalid_executable(tmp_path):
 
 
 @requires_spawn
+@pytest.mark.parametrize(
+    ("env", "message"),
+    [({"A=B": "1"}, "illegal environment variable name"), ({"A": "1\0"}, "embedded null byte")],
+)
+def test_invalid_env_raises_in_the_caller(env, message):
+    # On the fork path, the child of the fork gets this error and runs the rest of the tests.
+    with pytest.raises(ValueError, match=message):
+        PtyWithClients(["sh"], env=env)
+
+
+@requires_spawn
 def test_missing_cwd(tmp_path):
     missing = tmp_path / "missing"
     with pytest.raises(FileNotFoundError) as error:
@@ -283,6 +337,20 @@ def test_waiting_for_the_helper_has_a_timeout(monkeypatch, tmp_path):
     with pytest.raises(TimeoutError):
         PtyWithClients(["sleep", "5"], env=dict(os.environ))
     assert time.monotonic() - start < 4
+
+
+@requires_spawn
+def test_env_without_a_variable_that_python_needs(monkeypatch, tmp_path):
+    # This wrapper needs a variable from the environment of the server to start Python. In
+    # the same way, an interpreter can need LD_LIBRARY_PATH to find its shared libpython.
+    # The environment of the terminal does not have the variable.
+    python = tmp_path / "python"
+    python.write_text('#!/bin/sh\nexec "$TERMINADO_PYTHON" "$@"\n')
+    python.chmod(0o755)
+    monkeypatch.setenv("TERMINADO_PYTHON", sys.executable)
+    monkeypatch.setattr(sys, "executable", str(python))
+    env = {key: value for key, value in os.environ.items() if key != "TERMINADO_PYTHON"}
+    assert output_of(["sh", "-c", "echo hello"], env=env).split() == ["hello"]
 
 
 @pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
