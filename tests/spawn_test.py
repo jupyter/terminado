@@ -6,7 +6,9 @@
 import errno
 import os
 import signal
+import subprocess
 import sys
+import threading
 
 import pytest
 
@@ -19,6 +21,43 @@ from terminado.management import PtyWithClients
 requires_spawn = pytest.mark.skipif(
     not _spawn.available(), reason="Without os.posix_spawn(), terminals still fork"
 )
+
+# Prints "ready", then waits until a signal stops it.
+SLEEPER = ["sh", "-c", "echo ready; exec sleep 30"]
+
+# Prints the file descriptors above 2 that are open in the program.
+LIST_OPEN_DESCRIPTORS = """\
+import os
+for fd in range(3, 1024):
+    try:
+        os.fstat(fd)
+    except OSError:
+        continue
+    print(fd)
+"""
+
+# Runs in a new interpreter with file descriptors 0 to 3 closed, so the terminal and the
+# error pipe of the first terminal get numbers that the child replaces. Writes the file
+# name in the error of the first terminal and the output of a second terminal to
+# result.txt.
+WITHOUT_STANDARD_DESCRIPTORS = """\
+import os
+os.closerange(0, 4)
+from terminado.management import PtyWithClients
+output = ""
+try:
+    PtyWithClients(["sh"], cwd="missing", env=dict(os.environ))
+except FileNotFoundError as error:
+    output += error.filename + " "
+terminal = PtyWithClients(["sh", "-c", "echo hello"], env=dict(os.environ))
+try:
+    while True:
+        output += terminal.ptyproc.read(65536)
+except EOFError:
+    pass
+with open("result.txt", "w") as f:
+    f.write(output)
+"""
 
 
 def read_until_eof(terminal):
@@ -38,6 +77,33 @@ def output_of(argv, **kwargs):
     output = read_until_eof(terminal)
     terminal.ptyproc.close()
     return output
+
+
+def open_descriptors():
+    """Return the file descriptors above 2 that are open in a program in a new terminal.
+
+    While the terminal starts, this process has an inheritable file descriptor open.
+    """
+    read_end, write_end = os.pipe()
+    os.set_inheritable(write_end, True)
+    try:
+        return output_of([sys.executable, "-c", LIST_OPEN_DESCRIPTORS]).split()
+    finally:
+        os.close(read_end)
+        os.close(write_end)
+
+
+def stop_with_ctrl_c(terminal):
+    """Press Ctrl-C when the program in the terminal is ready, and return its signal."""
+    output = ""
+    while "ready" not in output:
+        output += terminal.ptyproc.read(65536)
+    terminal.ptyproc.write("\x03")
+    read_until_eof(terminal)
+    terminal.ptyproc.wait()
+    status = terminal.ptyproc.signalstatus
+    terminal.ptyproc.close()
+    return status
 
 
 @requires_spawn
@@ -69,15 +135,23 @@ def test_session_leader_with_controlling_terminal():
 
 
 def test_ctrl_c_interrupts_the_program():
-    terminal = PtyWithClients(["sh", "-c", "echo ready; exec sleep 30"], env=dict(os.environ))
-    output = ""
-    while "ready" not in output:
-        output += terminal.ptyproc.read(65536)
-    terminal.ptyproc.write("\x03")
-    read_until_eof(terminal)
-    terminal.ptyproc.wait()
-    assert terminal.ptyproc.signalstatus == signal.SIGINT
-    terminal.ptyproc.close()
+    terminal = PtyWithClients(SLEEPER, env=dict(os.environ))
+    assert stop_with_ctrl_c(terminal) == signal.SIGINT
+
+
+@requires_spawn
+def test_blocked_signals_are_not_inherited():
+    # The shell must not inherit the signal mask of the thread that opens the terminal.
+    terminals = []
+
+    def open_terminal():
+        signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
+        terminals.append(PtyWithClients(SLEEPER, env=dict(os.environ)))
+
+    thread = threading.Thread(target=open_terminal)
+    thread.start()
+    thread.join()
+    assert stop_with_ctrl_c(terminals[0]) == signal.SIGINT
 
 
 def test_exit_status():
@@ -95,14 +169,14 @@ def test_sigpipe_is_not_ignored():
 
 
 def test_file_descriptors_are_not_inherited():
-    read_end, write_end = os.pipe()
-    os.set_inheritable(write_end, True)
-    try:
-        script = f"import os\ntry:\n    os.fstat({write_end})\nexcept OSError:\n    print('closed')"
-        assert output_of([sys.executable, "-c", script]).split() == ["closed"]
-    finally:
-        os.close(read_end)
-        os.close(write_end)
+    assert open_descriptors() == []
+
+
+@requires_spawn
+def test_server_without_standard_file_descriptors(tmp_path):
+    argv = [sys.executable, "-c", WITHOUT_STANDARD_DESCRIPTORS]
+    subprocess.run(argv, cwd=tmp_path, timeout=60, check=True)  # noqa: S603
+    assert (tmp_path / "result.txt").read_text().split() == ["missing", "hello"]
 
 
 def test_missing_command():
