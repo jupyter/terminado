@@ -17,6 +17,8 @@ child.
 # Distributed under the terms of the Simplified BSD License.
 from __future__ import annotations
 
+import functools
+import logging
 import os
 import shutil
 import struct
@@ -27,6 +29,8 @@ from typing import Any
 if sys.platform != "win32":
     import fcntl
     import termios
+
+log = logging.getLogger(__name__)
 
 # spawn() starts the helper as `python -I -S -c HELPER cwd command [arg ...]`.
 # File descriptors 0, 1 and 2 are the terminal, and file descriptor 3 is the write end
@@ -74,8 +78,25 @@ def available() -> bool:
         and hasattr(os, "posix_spawn")
         and not getattr(sys, "frozen", False)
         and bool(sys.executable)
-        and os.access(sys.executable, os.X_OK)
+        and _helper_starts(sys.executable)
     )
+
+
+@functools.cache
+def _helper_starts(executable: str) -> bool:
+    """Return True if `executable` starts with the options that spawn() gives the helper.
+
+    For example, a relocated interpreter that needs PYTHONHOME does not start, because the
+    -I option makes the interpreter ignore PYTHONHOME.
+    """
+    argv = [executable, "-I", "-S", "-c", "import fcntl, termios"]
+    try:
+        _, status = os.waitpid(os.posix_spawn(executable, argv, os.environ), 0)
+    except OSError:
+        status = -1
+    if status != 0:
+        log.warning("Terminals start with fork(), because %s did not start with -I -S", executable)
+    return status == 0
 
 
 def _above_targets(fd: int) -> int:
@@ -100,10 +121,10 @@ def spawn(
     """Start `argv` in a new pseudo-terminal and return a `cls` instance for the new process.
 
     Use this function instead of cls.spawn(), where `cls` is ptyprocess.PtyProcess or a
-    subclass of it. The result is the same as with pty.fork(): the child is the leader of
-    a new session, and the terminal is the controlling terminal of the child. If the child
-    fails before `exec`, for example because the directory `cwd` does not exist, this
-    function raises OSError.
+    subclass of it, and only when available() returns True. The result is the same as with
+    pty.fork(): the child is the leader of a new session, and the terminal is the
+    controlling terminal of the child. When an OSError stops the helper before `exec`, for
+    example because the directory `cwd` does not exist, this function raises that error.
     """
     if not isinstance(argv, (list, tuple)):
         msg = f"Expected a list or tuple for argv, got {argv!r}"
@@ -140,7 +161,8 @@ def spawn(
         os.close(error_write)
 
     # The read returns no data when `exec` succeeds, because `exec` closes the write end
-    # of the pipe. When the helper fails, the read returns the error that the helper wrote.
+    # of the pipe. When an OSError stops the helper, the read returns the error that the
+    # helper wrote.
     try:
         error = os.read(error_read, 4096)
     finally:

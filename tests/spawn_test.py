@@ -226,3 +226,14 @@ def test_missing_cwd(tmp_path):
 def test_falls_back_to_fork(monkeypatch):
     monkeypatch.setattr(_spawn, "available", lambda: False)
     assert "hello" in output_of(["sh", "-c", "echo hello"])
+
+
+@requires_spawn
+@pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
+def test_falls_back_to_fork_when_the_helper_does_not_start(monkeypatch, tmp_path):
+    # For example, a relocated interpreter that needs PYTHONHOME does not start with -I.
+    python = tmp_path / "python"
+    python.write_text("#!/bin/sh\nexit 1\n")
+    python.chmod(0o755)
+    monkeypatch.setattr(sys, "executable", str(python))
+    assert "hello" in output_of(["sh", "-c", "echo hello"])
