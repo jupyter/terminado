@@ -76,6 +76,24 @@ with open("result.txt", "w") as f:
     f.write(output)
 """
 
+# Opens a terminal without `env` on the fork path, and prints the output of the terminal.
+# The test runs this script in a new interpreter, because a child of the fork that fails
+# before `exec` continues to run the code that opened the terminal. In the test process,
+# the child would run the other tests.
+FORK_WITHOUT_ENV = """\
+from terminado import _spawn
+from terminado.management import PtyWithClients
+_spawn.available = lambda: False
+terminal = PtyWithClients(["sh", "-c", "echo $GREETING"])
+output = ""
+try:
+    while True:
+        output += terminal.ptyproc.read(65536)
+except EOFError:
+    pass
+print(output)
+"""
+
 
 def read_until_eof(terminal):
     """Return everything that the terminal prints until its program exits."""
@@ -123,6 +141,13 @@ def stop_with_ctrl_c(terminal):
     return status
 
 
+def survives(signal_name):
+    """Return True if a shell in a new terminal survives a signal that it sends to itself."""
+    # The default action of SIGXFSZ writes a core file, so turn core files off.
+    script = f"ulimit -c 0; kill -{signal_name} $$; echo survived"
+    return "survived" in output_of(["sh", "-c", script])
+
+
 @requires_spawn
 def test_does_not_fork(monkeypatch):
     def fail():
@@ -134,13 +159,14 @@ def test_does_not_fork(monkeypatch):
     assert "hello" in output_of(["sh", "-c", "echo hello"])
 
 
-def test_cwd_and_env(tmp_path):
-    output = output_of(
-        ["sh", "-c", "pwd -P; echo $GREETING"],
-        env={**os.environ, "GREETING": "hello"},
-        cwd=str(tmp_path),
-    )
-    assert output.split() == [os.path.realpath(tmp_path), "hello"]
+def test_cwd(tmp_path):
+    output = output_of(["sh", "-c", "pwd -P"], cwd=str(tmp_path))
+    assert output.split() == [os.path.realpath(tmp_path)]
+
+
+def test_env():
+    output = output_of(["sh", "-c", "echo $GREETING"], env={**os.environ, "GREETING": "hello"})
+    assert output.split() == ["hello"]
 
 
 @pytest.mark.parametrize("lc_ctype", [None, "C"])
@@ -192,8 +218,16 @@ def test_window_size():
     assert output_of(["stty", "size"]).split() == ["24", "80"]
 
 
-def test_sigpipe_is_not_ignored():
-    assert "survived" not in output_of(["sh", "-c", "kill -PIPE $$; echo survived"])
+@pytest.mark.parametrize("name", ["PIPE", "XFSZ"])
+def test_signal_is_not_ignored(name):
+    assert not survives(name)
+
+
+@pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
+@pytest.mark.parametrize("name", ["PIPE", "XFSZ"])
+def test_signal_is_not_ignored_after_fork(monkeypatch, name):
+    monkeypatch.setattr(_spawn, "available", lambda: False)
+    assert not survives(name)
 
 
 def test_file_descriptors_are_not_inherited():
@@ -255,6 +289,13 @@ def test_waiting_for_the_helper_has_a_timeout(monkeypatch, tmp_path):
 def test_falls_back_to_fork(monkeypatch):
     monkeypatch.setattr(_spawn, "available", lambda: False)
     assert "hello" in output_of(["sh", "-c", "echo hello"])
+
+
+def test_fork_without_env_inherits_the_environment():
+    argv = [sys.executable, "-c", FORK_WITHOUT_ENV]
+    env = {**os.environ, "GREETING": "hello"}
+    result = subprocess.run(argv, env=env, capture_output=True, text=True, timeout=60, check=False)  # noqa: S603
+    assert result.stdout.split() == ["hello"]
 
 
 @requires_spawn
