@@ -149,6 +149,23 @@ def _above_targets(fd: int) -> int:
     return copy
 
 
+def _close(*fds: int) -> None:
+    """Close each file descriptor in `fds` that is not -1."""
+    for fd in fds:
+        if fd != -1:
+            os.close(fd)
+
+
+def _kill(pid: int) -> None:
+    """Kill the helper, or the command that the helper started, and wait for it in a thread.
+
+    A killed helper that waits in chdir() exits only when chdir() returns, so the thread that
+    calls this function does not wait.
+    """
+    os.kill(pid, signal.SIGKILL)
+    threading.Thread(target=os.waitpid, args=(pid, 0), daemon=True).start()
+
+
 def _encode_environment(env: Mapping[str, str]) -> bytes:
     """Return `env` in the form that the helper reads from the environment pipe.
 
@@ -226,12 +243,13 @@ def spawn(
     environment = _encode_environment(os.environ if env is None else env)
 
     master, slave = os.openpty()
-    slave = _above_targets(slave)
-    error_read, error_write = os.pipe()
-    error_write = _above_targets(error_write)
-    env_read, env_write = os.pipe()
-    env_read = _above_targets(env_read)
+    error_read = error_write = env_read = env_write = -1
     try:
+        slave = _above_targets(slave)
+        error_read, error_write = os.pipe()
+        error_write = _above_targets(error_write)
+        env_read, env_write = os.pipe()
+        env_read = _above_targets(env_read)
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", *dimensions, 0, 0))
         pid = os.posix_spawn(
             sys.executable,
@@ -247,25 +265,22 @@ def spawn(
             setsigmask={signal.SIGINT},
         )
     except BaseException:
-        os.close(master)
-        os.close(error_read)
-        os.close(env_write)
+        _close(master, error_read, env_write)
         raise
     finally:
-        os.close(slave)
-        os.close(error_write)
-        os.close(env_read)
+        _close(slave, error_write, env_read)
 
     try:
         error = _wait_for_exec(error_read, env_write, environment)
+    except BaseException:
+        os.close(master)
+        _kill(pid)
+        raise
     finally:
         os.close(error_read)
     if error is None:
-        os.kill(pid, signal.SIGKILL)
         os.close(master)
-        # A killed helper that waits in chdir() exits only when chdir() returns, so wait for
-        # it in another thread.
-        threading.Thread(target=os.waitpid, args=(pid, 0), daemon=True).start()
+        _kill(pid)
         msg = f"The terminal did not start within {EXEC_TIMEOUT} s"
         raise TimeoutError(errno.ETIMEDOUT, msg)
     if error:

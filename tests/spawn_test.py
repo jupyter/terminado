@@ -176,6 +176,21 @@ def survives(signal_name):
     return "survived" in output_of(["sh", "-c", script])
 
 
+def has_exited(pid):
+    """Return True if the process `pid` is gone within 10 s.
+
+    A process is gone when it has exited and its parent has waited for it.
+    """
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.01)
+    return False
+
+
 @requires_spawn
 def test_does_not_fork(monkeypatch):
     def fail():
@@ -337,6 +352,36 @@ def test_waiting_for_the_helper_has_a_timeout(monkeypatch, tmp_path):
     with pytest.raises(TimeoutError):
         PtyWithClients(["sleep", "5"], env=dict(os.environ))
     assert time.monotonic() - start < 4
+
+
+@requires_spawn
+@pytest.mark.parametrize("call", ["os.pipe", "selectors.DefaultSelector"])
+def test_failed_open_leaves_no_terminal_and_no_helper(monkeypatch, call):
+    # For example, the server has too many open files when it opens the error pipe, or when
+    # it waits for the helper.
+    terminals, helpers = [], []
+    real_openpty, real_posix_spawn = os.openpty, os.posix_spawn
+
+    def openpty():
+        terminals.append(real_openpty())
+        return terminals[-1]
+
+    def posix_spawn(*args, **kwargs):
+        helpers.append(real_posix_spawn(*args, **kwargs))
+        return helpers[-1]
+
+    def fail(*args):
+        raise OSError(errno.EMFILE, os.strerror(errno.EMFILE))
+
+    monkeypatch.setattr(os, "openpty", openpty)
+    monkeypatch.setattr(os, "posix_spawn", posix_spawn)
+    monkeypatch.setattr(call, fail)
+    with pytest.raises(OSError, match=os.strerror(errno.EMFILE)):
+        PtyWithClients(SLEEPER, env=dict(os.environ))
+    for fd in terminals[0]:
+        with pytest.raises(OSError, match="Bad file descriptor"):
+            os.fstat(fd)
+    assert all(map(has_exited, helpers))
 
 
 @requires_spawn
