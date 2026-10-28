@@ -45,40 +45,30 @@ log = logging.getLogger(__name__)
 EXEC_TIMEOUT = 30
 
 # spawn() starts the helper as `python -I -S -c HELPER cwd command [arg ...]`. File
-# descriptors 0, 1 and 2 are the terminal, file descriptor 3 is the write end of the error
-# pipe, and file descriptor 4 is the read end of the environment pipe.
+# descriptors 0, 1 and 2 are the terminal, 3 is the write end of the error pipe, and 4 is
+# the read end of the environment pipe.
 #
 # Right before `exec`, the helper writes a NUL byte to the error pipe. When an OSError
-# stops the helper, also an OSError from `exec`, the helper writes `errno:filename` to the
-# error pipe and exits. So spawn() reads a NUL byte and then EOF when `exec` succeeds, an
-# error when an OSError stops the helper, and EOF with no data when the helper exits for
-# another reason, for example because a signal ends it or the interpreter does not start.
+# stops the helper, the helper writes `errno:filename` and exits. EOF with no data means
+# that the helper exited for another reason, for example because a signal ended it.
 #
-# The helper runs with the environment of this process, because available() checks that
-# the interpreter starts with this environment. The helper does not run with `env`, for
-# three reasons. `env` can lack a variable that the interpreter needs, for example
-# LD_LIBRARY_PATH. A variable in `env` can change how the interpreter starts, even with -I,
-# for example PYTHONEXECUTABLE. CPython also changes some variables in its own environment
-# when it starts, for example LC_CTYPE (PEP 538). So spawn() writes `env` to the
-# environment pipe, and the helper passes `env` to `exec`. In the pipe, each key and each
-# value ends with a NUL byte. `env` does not go in the arguments of the helper, because
-# other users can read the arguments of a process.
+# The helper runs with the environment of this process, because available() checked the
+# interpreter with this environment. With `env` as its environment, the helper could miss
+# a variable that the interpreter needs (LD_LIBRARY_PATH), start differently even with -I
+# (PYTHONEXECUTABLE), or change LC_CTYPE before `exec` (PEP 538). `env` goes through the
+# environment pipe, because other users can read the arguments of a process.
 #
-# spawn() starts the helper with SIGINT blocked. Until setsid(), the helper is in the
-# process group of this process, and Ctrl-C in the terminal that runs the server sends
-# SIGINT to this process group. A SIGINT that arrives before setsid() stays pending.
-# After setsid(), the helper sets SIGINT to SIG_IGN, and this discards a pending SIGINT.
-# The helper then sets SIGINT, SIGPIPE and SIGXFSZ to SIG_DFL, because `exec` keeps
-# ignored signals ignored, and Python ignores SIGPIPE and SIGXFSZ. Last, the helper
-# unblocks all signals. os.posix_spawn(setsid=True) is not available in every build of
-# Python, for example not in the builds that uv installs.
+# Until setsid(), the helper is in the process group of this process, and Ctrl-C in the
+# terminal of the server sends SIGINT to this group. So spawn() blocks SIGINT. After
+# setsid(), the helper sets SIGINT to SIG_IGN, and this discards a pending SIGINT.
+# posix_spawn(setsid=True) would make this unnecessary, but the builds of Python that uv
+# installs do not support it. The helper then sets SIGINT, SIGPIPE and SIGXFSZ to SIG_DFL,
+# because `exec` keeps ignored signals ignored, and Python ignores SIGPIPE and SIGXFSZ.
 #
 # The helper closes only the file descriptors that it finds in /proc/self/fd, or in
-# /dev/fd on macOS, because os.closerange() can be slow. When Python cannot use
-# close_range(), os.closerange() calls close() for every number up to the limit, and
-# this takes more than 100 ms when the limit is high. On FreeBSD, NetBSD, OpenBSD and
-# DragonFly, /dev/fd can be a static directory that does not list all open file
-# descriptors.
+# /dev/fd on macOS. os.closerange() can take more than 100 ms, because it calls close()
+# for every number up to the limit when close_range() is not available. On the BSDs,
+# /dev/fd can be a static directory.
 HELPER = """\
 import fcntl, os, signal, sys, termios
 cwd, command, *args = sys.argv[1:]
@@ -198,9 +188,8 @@ def _wait_for_exec(error_read: int, env_write: int, environment: bytes) -> bytes
     """Write `environment` to the helper, and return what the helper writes to the error pipe.
 
     This function closes `env_write` after the last byte, because the helper reads the
-    environment pipe until EOF. This function reads the error pipe until EOF. EOF comes when
-    `exec` closes the write end of the error pipe, or when the helper exits. When the helper
-    does not call `exec` within EXEC_TIMEOUT seconds, this function returns None.
+    environment pipe until EOF. It returns None when the helper does not call `exec` within
+    EXEC_TIMEOUT seconds.
     """
     deadline = time.monotonic() + EXEC_TIMEOUT
     unsent = memoryview(environment)
