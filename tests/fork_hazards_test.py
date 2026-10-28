@@ -10,15 +10,16 @@ that the server still uses.
 # Copyright (c) Jupyter Development Team
 # Distributed under the terms of the Simplified BSD License.
 
-import os
 import subprocess
 import sys
 import textwrap
 
 import pytest
 
+from terminado import _spawn
+
 pytestmark = pytest.mark.skipif(
-    not hasattr(os, "posix_spawn"), reason="Without os.posix_spawn(), terminals still fork"
+    not _spawn.available(), reason="_spawn.available() is False, so terminals still fork"
 )
 
 

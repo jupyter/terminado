@@ -21,10 +21,10 @@ from terminado import _spawn
 from terminado.management import PtyWithClients
 
 requires_spawn = pytest.mark.skipif(
-    not _spawn.available(), reason="Without os.posix_spawn(), terminals still fork"
+    not _spawn.available(), reason="_spawn.available() is False, so terminals still fork"
 )
 
-# Prints "ready", then waits until a signal stops it.
+# Prints "ready", then sleeps for 30 s or until a signal stops it.
 SLEEPER = ["sh", "-c", "echo ready; exec sleep 30"]
 
 # Prints the file descriptors above 2 that are open in the program.
@@ -362,7 +362,7 @@ def test_waiting_for_the_helper_has_a_timeout(monkeypatch, tmp_path):
     python.write_text(f'#!/bin/sh\n{shlex.quote(sys.executable)} "$@"\n')
     python.chmod(0o755)
     monkeypatch.setattr(sys, "executable", str(python))
-    monkeypatch.setattr(_spawn, "EXEC_TIMEOUT", 1, raising=False)
+    monkeypatch.setattr(_spawn, "EXEC_TIMEOUT", 1)
     start = time.monotonic()
     with pytest.raises(TimeoutError):
         PtyWithClients(["sleep", "5"], env=dict(os.environ))
