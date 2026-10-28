@@ -5,8 +5,8 @@ child also has a copy of all the memory of this process, including the thread-lo
 objects of the other threads. Before the child calls `exec`, Python frees these objects, so
 their finalizers run in the child. Python also calls the functions registered with
 os.register_at_fork(). These finalizers and functions come from extensions and libraries.
-They can wait forever for a lock, because the thread that held the lock does not exist in
-the child.
+A finalizer or a function can wait forever for a lock, because the thread that held the
+lock does not exist in the child.
 
 Instead of fork(), spawn() uses os.posix_spawn() to start a small helper interpreter. The
 helper sets up the terminal and then calls `exec`, so no code from this process runs in the
