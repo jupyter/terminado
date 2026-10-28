@@ -191,6 +191,20 @@ def has_exited(pid):
     return False
 
 
+@pytest.mark.skipif(
+    sys.implementation.name != "cpython"
+    or not sys.platform.startswith(("linux", "darwin"))
+    or not hasattr(os, "posix_spawn"),
+    reason="The helper must start only with CPython on Linux and macOS",
+)
+def test_helper_is_available():
+    # The tests of the helper skip when _spawn.available() is False, so a helper that does
+    # not start fails this test instead. The check runs again here, so that the log of this
+    # test gives the reason.
+    _spawn._helper_starts.cache_clear()
+    assert _spawn.available()
+
+
 @requires_spawn
 def test_does_not_fork(monkeypatch):
     def fail():
