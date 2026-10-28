@@ -30,7 +30,7 @@ class NewTerminalHandler(tornado.web.RequestHandler):
     """Redirect to an unused terminal name"""
 
     def get(self):
-        name, terminal = self.application.settings["term_manager"].new_named_terminal()
+        name, _terminal = self.application.settings["term_manager"].new_named_terminal()
         self.redirect("/" + name, permanent=False)
 
 

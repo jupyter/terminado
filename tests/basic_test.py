@@ -6,13 +6,10 @@
 
 
 import asyncio
-import datetime
+import datetime as dt
 import json
 import os
 import re
-
-# We must set the policy for python >=3.8, see https://www.tornadoweb.org/en/stable/#installation
-# Snippet from https://github.com/tornadoweb/tornado/issues/2608#issuecomment-619524992
 import sys
 import unittest
 from sys import platform
@@ -25,7 +22,11 @@ from tornado.ioloop import IOLoop
 
 from terminado import NamedTermManager, SingleTermManager, TermSocket, UniqueTermManager
 
-if sys.version_info >= (3, 8) and sys.platform.startswith("win"):
+# Prefer the selector event loop on Windows, as jupyter_server does, see
+# https://github.com/tornadoweb/tornado/issues/2608#issuecomment-619524992
+# The event loop policy API is deprecated as of Python 3.14, so there we rely
+# on Tornado's support for the default proactor event loop instead.
+if sys.platform.startswith("win") and sys.version_info < (3, 14):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 #
@@ -37,6 +38,10 @@ ASYNC_TEST_TIMEOUT = 30
 os.environ["ASYNC_TEST_TIMEOUT"] = str(ASYNC_TEST_TIMEOUT)
 
 MAX_TERMS = 3  # Testing thresholds
+
+# Terminal control sequences, e.g. colors, window titles and the bracketed
+# paste mode toggles emitted by recent versions of bash
+ESCAPE_SEQUENCE_RE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\))")
 
 
 class TestTermClient:
@@ -63,7 +68,7 @@ class TestTermClient:
     async def read_all_msg(self, timeout=DONE_TIMEOUT):
         """Read messages until read times out"""
         msglist: list = []
-        delta = datetime.timedelta(seconds=timeout)
+        delta = dt.timedelta(seconds=timeout)
         while True:
             try:
                 mf = self.read_msg()
@@ -90,7 +95,7 @@ class TestTermClient:
         and any non-stdout msgs"""
         othermsg: list = []
         bytes_discarded = 0
-        delta = datetime.timedelta(seconds=timeout)
+        delta = dt.timedelta(seconds=timeout)
         while True:
             try:
                 mf = self.read_msg()
@@ -110,19 +115,12 @@ class TestTermClient:
         """Get process ID of terminal shell process"""
         await self.read_stdout()  # Clear out any pending
         await self.write_stdin("echo $$\r")
-        (stdout, extra) = await self.read_stdout()
-        if os.name == "nt":
-            match = re.search(r"echo \$\$\\.*?\\r\\n(\d+)", repr(stdout))
-            assert match is not None
-            pid = int(match.groups()[0])
-        else:
-            # This should work on any OS, but keeping the above Windows special
-            # case as I can't verify on Windows.
-            for li in stdout.splitlines():
-                if re.match(r"\d+$", li):
-                    pid = int(li)
-                    break
-        return pid
+        (stdout, _extra) = await self.read_stdout()
+        stdout = ESCAPE_SEQUENCE_RE.sub("", stdout)
+        for li in stdout.splitlines():
+            if re.match(r"\d+$", li):
+                return int(li)
+        pytest.fail(f"No PID found in terminal output: {stdout!r}")
 
     def close(self):
         self.ws.close()
@@ -139,7 +137,9 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
         )
 
         ws = await tornado.websocket.websocket_connect(request)
-        return TestTermClient(ws)
+        client = TestTermClient(ws)
+        self.clients.append(client)
+        return client
 
     async def get_term_clients(self, paths):
         return await asyncio.gather(*(self.get_term_client(path) for path in paths))
@@ -152,7 +152,15 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
 
         return pids
 
+    def setUp(self):
+        self.clients = []
+        super().setUp()
+
     def tearDown(self):
+        # Close any clients a test left open, which would otherwise raise a
+        # ResourceWarning when garbage collected (possibly during a later test)
+        for client in self.clients:
+            client.close()
         run = IOLoop.current().run_sync
         run(self.named_tm.kill_all)
         run(self.single_tm.kill_all)
@@ -178,7 +186,7 @@ class TermTestCase(tornado.testing.AsyncHTTPTestCase):
             """Create a new named terminal, return redirect"""
 
             def get(self):
-                name, terminal = named_tm.new_named_terminal()
+                name, _terminal = named_tm.new_named_terminal()
                 self.redirect("/named/" + name, permanent=False)
 
         return tornado.web.Application(
@@ -329,7 +337,7 @@ class UniqueTermTests(TermTestCase):
         # didn't just timeout.
         bytes_discarded, other = await tm.discard_stdout()
         # Echo won't actually output anything on Windows.
-        if "win" not in platform:
+        if os.name != "nt":
             assert bytes_discarded > 10000
         assert other == []
         tm.close()
