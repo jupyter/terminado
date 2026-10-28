@@ -312,6 +312,11 @@ class UniqueTermTests(TermTestCase):
         msg = await tms[0].read_msg()  # Closed
         self.assertEqual(msg, None)
 
+        # When the websocket closes, the server sends SIGHUP to the shell. The server frees
+        # the terminal later, when the shell has exited and the pty returns EOF.
+        while len(self.unique_tm.ptys_by_fd) >= MAX_TERMS:
+            await asyncio.sleep(0.01)
+
         # Should be able to open back up to MAX_TERMS
         tm = await self.get_term_client("/unique")
         msg = await tm.read_msg()
