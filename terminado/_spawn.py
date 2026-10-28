@@ -17,12 +17,16 @@ child.
 # Distributed under the terms of the Simplified BSD License.
 from __future__ import annotations
 
+import errno
 import functools
 import logging
 import os
+import selectors
 import shutil
+import signal
 import struct
 import sys
+import threading
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -31,6 +35,11 @@ if sys.platform != "win32":
     import termios
 
 log = logging.getLogger(__name__)
+
+# How many seconds spawn() waits for the helper to call `exec`. spawn() blocks the thread
+# that calls it, and in a Jupyter server that thread serves all requests. A chdir() into a
+# stalled network mount can block the helper with no time limit.
+EXEC_TIMEOUT = 30
 
 # spawn() starts the helper as `python -I -S -c HELPER cwd lc_ctype command [arg ...]`.
 # File descriptors 0, 1 and 2 are the terminal, and file descriptor 3 is the write end
@@ -136,6 +145,8 @@ def spawn(
     pty.fork(): the child is the leader of a new session, and the terminal is the
     controlling terminal of the child. When an OSError stops the helper before `exec`, for
     example because the directory `cwd` does not exist, this function raises that error.
+    When the helper does not call `exec` within EXEC_TIMEOUT seconds, this function kills
+    the helper and raises TimeoutError.
     """
     if not isinstance(argv, (list, tuple)):
         msg = f"Expected a list or tuple for argv, got {argv!r}"
@@ -178,9 +189,20 @@ def spawn(
     # of the pipe. When an OSError stops the helper, the read returns the error that the
     # helper wrote.
     try:
-        error = os.read(error_read, 4096)
+        with selectors.DefaultSelector() as selector:
+            selector.register(error_read, selectors.EVENT_READ)
+            ready = selector.select(EXEC_TIMEOUT)
+        error = os.read(error_read, 4096) if ready else None
     finally:
         os.close(error_read)
+    if error is None:
+        os.kill(pid, signal.SIGKILL)
+        os.close(master)
+        # A killed helper that waits in chdir() exits only when chdir() returns, so wait for
+        # it in another thread.
+        threading.Thread(target=os.waitpid, args=(pid, 0), daemon=True).start()
+        msg = f"The terminal did not start within {EXEC_TIMEOUT} s"
+        raise TimeoutError(errno.ETIMEDOUT, msg)
     if error:
         os.close(master)
         os.waitpid(pid, 0)
