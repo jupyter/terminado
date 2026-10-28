@@ -86,7 +86,7 @@ try:
     fcntl.fcntl(3, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
     os.execv(command, [command, *args])
 except OSError as e:
-    os.write(3, ("%d:%s" % (e.errno or 0, e.filename or "")).encode("utf-8", "surrogateescape"))
+    os.write(3, b"%d:" % (e.errno or 0) + os.fsencode(e.filename or ""))
     os._exit(127)
 """
 
@@ -206,8 +206,8 @@ def spawn(
     if error:
         os.close(master)
         os.waitpid(pid, 0)
-        code, _, filename = error.decode("utf-8", "surrogateescape").partition(":")
-        raise OSError(int(code), os.strerror(int(code)), filename or None)
+        code, _, filename = error.partition(b":")
+        raise OSError(int(code), os.strerror(int(code)), os.fsdecode(filename) or None)
 
     inst = cls(pid, master)
     inst.argv = [command, *argv[1:]]
