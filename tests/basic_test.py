@@ -280,11 +280,32 @@ class SingleTermTests(TermTestCase):
         pids = await self.get_pids(tms)
         self.assertEqual(pids[0], pids[1])
 
-        assert self.single_tm.terminal is not None
-        killed = await self.single_tm.terminal.terminate(True)
+        terminal = self.single_tm.terminal
+        assert terminal is not None
+        killed = await terminal.terminate(True)
         assert killed
-        assert self.single_tm.terminal.ptyproc.closed
+        assert terminal.ptyproc.closed
         [tm.close() for tm in tms]
+
+    @tornado.testing.gen_test
+    @pytest.mark.skipif(os.name == "nt", reason="Single terminal is not tested on Windows")
+    async def test_new_process_after_exit(self):
+        tm = await self.get_term_client("/single")
+        pid = await tm.get_pid()
+
+        # Exit the shell; the server tells the client and closes the socket
+        await tm.write_stdin("exit\r")
+        while True:
+            msg = await tm.read_msg()
+            if msg is None or msg == ["disconnect", 1]:
+                break
+        tm.close()
+
+        # A new connection gets a new, working shell
+        tm = await self.get_term_client("/single")
+        new_pid = await tm.get_pid()
+        self.assertNotEqual(pid, new_pid)
+        tm.close()
 
 
 class UniqueTermTests(TermTestCase):

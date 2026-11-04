@@ -315,6 +315,12 @@ class SingleTermManager(TermManagerBase):
             self.start_reading(self.terminal)
         return self.terminal
 
+    def on_eof(self, ptywclients: PtyWithClients) -> None:
+        """Forget the singleton terminal when it closes, so the next client starts a new one."""
+        super().on_eof(ptywclients)
+        if ptywclients is self.terminal:
+            self.terminal = None
+
     async def kill_all(self) -> None:
         """Kill the singletone terminal."""
         await super().kill_all()
