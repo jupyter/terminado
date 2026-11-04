@@ -107,6 +107,8 @@ exclude_lines = [
 [tool.coverage.run]
 relative_files = true
 source = ["terminado"]
+# The helper runs with `python -I -S`, where coverage cannot measure it.
+omit = ["*/terminado/_spawn_helper.py"]
 
 [tool.mypy]
 files = "terminado"
@@ -163,6 +165,12 @@ unfixable = [
 # N802 Function name `assertIn` should be lowercase
 # PT009 Use a regular `assert` instead of unittest-style
 "tests/*" = ["B011", "F841", "C408", "E402", "T201", "B007", "N802",  "PT009"]
+# The helper does not import pathlib or contextlib, because every import adds to the time
+# that a terminal takes to open. The helper starts the command with os.execve().
+# PTH208 Use `pathlib.Path.iterdir()` instead
+# SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+# S606 Starting a process without a shell
+"terminado/_spawn_helper.py" = ["PTH208", "SIM105", "S606"]
 
 [tool.interrogate]
 ignore-init-module=true

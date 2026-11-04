@@ -25,7 +25,7 @@ try:
     from ptyprocess import PtyProcessUnicode  # type:ignore[import-untyped]
 
     def preexec_fn() -> None:
-        """Reset SIGPIPE and SIGXFSZ to their default action, as the helper in _spawn does.
+        """Reset SIGPIPE and SIGXFSZ to their default action, as _spawn_helper.py does.
 
         Python ignores both signals, and `exec` keeps ignored signals ignored.
         """

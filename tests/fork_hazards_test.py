@@ -16,6 +16,9 @@ import textwrap
 
 import pytest
 
+if sys.platform == "win32":
+    pytest.skip("Terminals on Windows do not fork", allow_module_level=True)
+
 from terminado import _spawn
 
 pytestmark = pytest.mark.skipif(

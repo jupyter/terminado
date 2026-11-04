@@ -38,8 +38,9 @@ for fd in range(3, 1024):
     print(fd)
 """
 
-# Runs in the helper before HELPER. The helper then sees the file descriptor directories
-# of FreeBSD without fdescfs: there is no /proc/self/fd, and /dev/fd lists only 0, 1 and 2.
+# Runs in the helper before the code of _spawn_helper.py. The helper then sees the file
+# descriptor directories of FreeBSD without fdescfs: there is no /proc/self/fd, and /dev/fd
+# lists only 0, 1 and 2.
 FREEBSD_WITHOUT_FDESCFS = """\
 import os, sys
 sys.platform = "freebsd14"
@@ -195,7 +196,7 @@ def has_exited(pid):
     sys.implementation.name != "cpython"
     or not sys.platform.startswith(("linux", "darwin"))
     or not hasattr(os, "posix_spawn"),
-    reason="The helper must start only with CPython on Linux and macOS",
+    reason="This check runs only with CPython on Linux and macOS",
 )
 def test_helper_is_available():
     # The tests of the helper skip when _spawn.available() is False, so a helper that does
@@ -308,7 +309,8 @@ def test_file_descriptors_are_not_inherited():
 
 @requires_spawn
 def test_static_dev_fd_is_not_trusted(monkeypatch):
-    monkeypatch.setattr(_spawn, "HELPER", FREEBSD_WITHOUT_FDESCFS + _spawn.HELPER)
+    helper = _spawn._helper_source()
+    monkeypatch.setattr(_spawn, "_helper_source", lambda: FREEBSD_WITHOUT_FDESCFS + helper)
     assert open_descriptors() == []
 
 
@@ -343,7 +345,8 @@ def test_invalid_executable(tmp_path):
 )
 def test_helper_that_exits_before_exec(monkeypatch, code, message):
     # For example, the interpreter does not start, or a signal ends the helper.
-    monkeypatch.setattr(_spawn, "HELPER", f"{code}\n{_spawn.HELPER}")
+    helper = _spawn._helper_source()
+    monkeypatch.setattr(_spawn, "_helper_source", lambda: f"{code}\n{helper}")
     with pytest.raises(OSError, match=message):
         PtyWithClients(["sh", "-c", "echo started"], env=dict(os.environ))
 
@@ -430,6 +433,18 @@ def test_env_without_a_variable_that_python_needs(monkeypatch, tmp_path):
 @pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
 def test_falls_back_to_fork(monkeypatch):
     monkeypatch.setattr(_spawn, "available", lambda: False)
+    assert "hello" in output_of(["sh", "-c", "echo hello"])
+
+
+@requires_spawn
+@pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
+def test_environment_variable_selects_the_fork(monkeypatch):
+    def fail(*args, **kwargs):
+        msg = "the helper started"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(_spawn, "spawn", fail)
+    monkeypatch.setenv("PTYPROCESS_USE_FORK", "1")
     assert "hello" in output_of(["sh", "-c", "echo hello"])
 
 

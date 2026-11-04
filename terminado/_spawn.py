@@ -10,7 +10,7 @@ lock does not exist in the child.
 
 Instead of fork(), spawn() uses os.posix_spawn() to start a small helper interpreter. The
 helper sets up the terminal and then calls `exec`, so no code from this process runs in the
-child.
+child. The code of the helper is in _spawn_helper.py.
 """
 
 # Copyright (c) Jupyter Development Team
@@ -20,6 +20,7 @@ from __future__ import annotations
 import contextlib
 import errno
 import functools
+import importlib.resources
 import logging
 import os
 import re
@@ -44,76 +45,22 @@ log = logging.getLogger(__name__)
 # stalled network mount can block the helper with no time limit.
 EXEC_TIMEOUT = 30
 
-# spawn() starts the helper as `python -I -S -X utf8 -c HELPER cwd command [arg ...]`.
-# File descriptors 0, 1 and 2 are the terminal, 3 is the write end of the error pipe, and
-# 4 is the read end of the environment pipe. With -X utf8, cwd and the arguments keep
-# their bytes in every locale. Without it, Python 3.14 and older can change or reject some
-# of these bytes in a legacy multibyte locale, for example ja_JP.eucJP.
-#
-# Right before `exec`, the helper writes a NUL byte to the error pipe. When an OSError
-# stops the helper, the helper writes `errno:filename` and exits. EOF with no data means
-# that the helper exited for another reason, for example because a signal ended it.
-#
-# The helper runs with the environment of this process, because available() checked the
-# interpreter with this environment. With `env` as its environment, the helper could miss
-# a variable that the interpreter needs (LD_LIBRARY_PATH), start differently even with -I
-# (PYTHONEXECUTABLE), or change LC_CTYPE before `exec` (PEP 538). `env` goes through the
-# environment pipe, because other users can read the arguments of a process.
-#
-# Until setsid(), the helper is in the process group of this process, and Ctrl-C in the
-# terminal of the server sends SIGINT to this group. So spawn() blocks SIGINT. After
-# setsid(), the helper sets SIGINT to SIG_IGN, and this discards a pending SIGINT.
-# posix_spawn(setsid=True) would make this unnecessary, but the builds of Python that uv
-# installs do not support it. The helper then sets SIGINT, SIGPIPE and SIGXFSZ to SIG_DFL,
-# because `exec` keeps ignored signals ignored, and Python ignores SIGPIPE and SIGXFSZ.
-#
-# The helper closes only the file descriptors that it finds in /proc/self/fd, or in
-# /dev/fd on macOS. os.closerange() can take more than 100 ms, because it calls close()
-# for every number up to the limit when close_range() is not available. On the BSDs,
-# /dev/fd can be a static directory.
-HELPER = """\
-import fcntl, os, signal, sys, termios
-cwd, command, *args = sys.argv[1:]
-try:
-    data = b""
-    while chunk := os.read(4, 65536):
-        data += chunk
-    fields = data.split(b"\\0")
-    env = dict(zip(fields[::2], fields[1::2]))
-    os.setsid()
-    fcntl.ioctl(0, termios.TIOCSCTTY, 0)
-    if cwd:
-        os.chdir(cwd)
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-    for name in ("SIGINT", "SIGPIPE", "SIGXFSZ"):
-        if hasattr(signal, name):
-            signal.signal(getattr(signal, name), signal.SIG_DFL)
-    signal.pthread_sigmask(signal.SIG_SETMASK, ())
-    try:
-        fds = os.listdir("/dev/fd" if sys.platform == "darwin" else "/proc/self/fd")
-    except OSError:
-        max_fd = os.sysconf("SC_OPEN_MAX")
-        os.closerange(4, max_fd if 0 < max_fd < 1048576 else 1048576)
-    else:
-        for fd in map(int, fds):
-            if fd > 3:
-                try:
-                    os.close(fd)
-                except OSError:
-                    pass
-    fcntl.fcntl(3, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
-    os.write(3, b"\\0")
-    os.execve(command, [command, *args], env)
-except OSError as e:
-    os.write(3, b"%d:" % (e.errno or 0) + os.fsencode(e.filename or ""))
-    os._exit(127)
-"""
+# When this environment variable is 1, terminals start with fork(), as in terminado 0.18.
+# The name starts with PTYPROCESS, so that the name can stay the same when the helper moves
+# to ptyprocess.
+FORK_VARIABLE = "PTYPROCESS_USE_FORK"
 
 
 def available() -> bool:
-    """Return True if spawn() can start a terminal without forking this process."""
+    """Return True if spawn() can start a terminal without forking this process.
+
+    Return False when the environment variable PTYPROCESS_USE_FORK is 1. Otherwise, the
+    first call starts the helper once to test it. This test takes 15 to 30 ms on Linux, and
+    at most EXEC_TIMEOUT seconds.
+    """
     return (
         os.name == "posix"
+        and os.environ.get(FORK_VARIABLE) != "1"
         and hasattr(os, "posix_spawn")
         and not getattr(sys, "frozen", False)
         and bool(sys.executable)
@@ -140,7 +87,22 @@ def _helper_starts(executable: str) -> bool:
         return False
     os.close(master)
     os.waitpid(pid, 0)
+    log.info(
+        "Terminals start without fork(), because %s runs the helper. Set %s=1 to fork.",
+        executable,
+        FORK_VARIABLE,
+    )
     return True
+
+
+@functools.cache
+def _helper_source() -> str:
+    """Return the code of the helper, from _spawn_helper.py.
+
+    _start() gives this code to `python -I -S -c`, because the helper cannot import
+    terminado: with -S, sys.path does not have site-packages.
+    """
+    return (importlib.resources.files("terminado") / "_spawn_helper.py").read_text("utf-8")
 
 
 def _above_targets(fd: int) -> int:
@@ -254,6 +216,7 @@ def _start(
     command. spawn() describes the errors.
     """
     environment = _encode_environment(os.environ if env is None else env)
+    helper = _helper_source()
 
     master, slave = os.openpty()
     error_read = error_write = env_read = env_write = -1
@@ -264,9 +227,11 @@ def _start(
         env_read, env_write = os.pipe()
         env_read = _above_targets(env_read)
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", *dimensions, 0, 0))
+        # _spawn_helper.py explains the arguments, the file descriptors, the environment
+        # and the blocked SIGINT.
         pid = os.posix_spawn(
             executable,
-            [executable, "-I", "-S", "-X", "utf8", "-c", HELPER, cwd or "", *argv],
+            [executable, "-I", "-S", "-X", "utf8", "-c", helper, cwd or "", *argv],
             os.environ,
             file_actions=[
                 (os.POSIX_SPAWN_DUP2, slave, 0),
