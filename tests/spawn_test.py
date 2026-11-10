@@ -457,14 +457,38 @@ def test_fork_without_env_inherits_the_environment():
 
 @requires_spawn
 @pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
-@pytest.mark.parametrize("script", ["exit 1", "exit 0", "exec sleep 30"])
+@pytest.mark.parametrize(
+    "script", ["exit 1", "exit 0", "exec sleep 30", "exec 3>&- 4<&-; exec sleep 30"]
+)
 def test_falls_back_to_fork_when_the_helper_does_not_start(monkeypatch, tmp_path, script):
     # For example, a relocated interpreter that needs PYTHONHOME does not start with -I. A
     # program that is not Python, for example an application that Nuitka compiled, can exit
-    # with 0 or not exit at all.
+    # with 0, not exit at all, or close the file descriptors that it inherits and keep running.
     python = tmp_path / "python"
     python.write_text(f"#!/bin/sh\n{script}\n")
     python.chmod(0o755)
     monkeypatch.setattr(sys, "executable", str(python))
     monkeypatch.setattr(_spawn, "EXEC_TIMEOUT", 1)
+    start = time.monotonic()
     assert "hello" in output_of(["sh", "-c", "echo hello"])
+    assert time.monotonic() - start < 4
+
+
+@requires_spawn
+def test_startup_check_does_not_wait_for_its_command(monkeypatch, tmp_path):
+    # Under nohup, the server ignores SIGHUP, and so does the command that the helper starts
+    # for the check. This wrapper runs the helper, which has -X utf8, but the command of the
+    # check does not exit.
+    python = tmp_path / "python"
+    helper = f'if [ "$3" = -X ]; then exec {shlex.quote(sys.executable)} "$@"; fi'
+    python.write_text(f"#!/bin/sh\n{helper}\nexec sleep 10\n")
+    python.chmod(0o755)
+    monkeypatch.setattr(sys, "executable", str(python))
+    monkeypatch.setattr(_spawn, "EXEC_TIMEOUT", 1)
+    previous = signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    try:
+        start = time.monotonic()
+        assert _spawn.available()
+    finally:
+        signal.signal(signal.SIGHUP, previous)
+    assert time.monotonic() - start < 4

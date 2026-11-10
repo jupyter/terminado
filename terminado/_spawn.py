@@ -85,8 +85,11 @@ def _helper_starts(executable: str) -> bool:
             "Terminals start with fork(), because %s did not run the helper: %s", executable, error
         )
         return False
+    # _start() returned, so the helper called `exec`, and this test does not need the command
+    # to run. Closing the terminal sends SIGHUP to the command, but under nohup the command
+    # ignores SIGHUP and can keep running.
     os.close(master)
-    os.waitpid(pid, 0)
+    _kill(pid)
     log.info(
         "Terminals start without fork(), because %s runs the helper. Set %s=1 to fork.",
         executable,
@@ -134,6 +137,27 @@ def _kill(pid: int) -> None:
     threading.Thread(target=os.waitpid, args=(pid, 0), daemon=True).start()
 
 
+def _wait(pid: int, deadline: float) -> int | None:
+    """Return the exit code of the process `pid`, or kill the process and return None when it
+    does not exit before `deadline`, a time.monotonic() value.
+
+    The helper closes the error pipe only when it calls `exec` or exits. A program that is not
+    the helper can close the error pipe and keep running. The loop waits in the same way as
+    subprocess.Popen.wait() with a timeout.
+    """
+    delay = 0.0005
+    while True:
+        done, status = os.waitpid(pid, os.WNOHANG)
+        if done:
+            return os.waitstatus_to_exitcode(status)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            _kill(pid)
+            return None
+        delay = min(delay * 2, remaining, 0.05)
+        time.sleep(delay)
+
+
 def _encode_environment(env: Mapping[str, str]) -> bytes:
     """Return `env` in the form that the helper reads from the environment pipe.
 
@@ -153,14 +177,15 @@ def _encode_environment(env: Mapping[str, str]) -> bytes:
     return b"".join(field + b"\0" for field in fields)
 
 
-def _wait_for_exec(error_read: int, env_write: int, environment: bytes) -> bytes | None:
+def _wait_for_exec(
+    error_read: int, env_write: int, environment: bytes, deadline: float
+) -> bytes | None:
     """Write `environment` to the helper, and return what the helper writes to the error pipe.
 
     This function closes `env_write` after the last byte, because the helper reads the
-    environment pipe until EOF. It returns None when the helper does not call `exec` within
-    EXEC_TIMEOUT seconds.
+    environment pipe until EOF. It returns None when the helper does not call `exec` before
+    `deadline`, a time.monotonic() value.
     """
-    deadline = time.monotonic() + EXEC_TIMEOUT
     unsent = memoryview(environment)
     report = b""
     with os.fdopen(env_write, "wb", buffering=0) as pipe, selectors.DefaultSelector() as selector:
@@ -248,8 +273,9 @@ def _start(
     finally:
         _close(slave, error_write, env_read)
 
+    deadline = time.monotonic() + EXEC_TIMEOUT
     try:
-        report = _wait_for_exec(error_read, env_write, environment)
+        report = _wait_for_exec(error_read, env_write, environment, deadline)
     except BaseException:
         os.close(master)
         _kill(pid)
@@ -264,18 +290,23 @@ def _start(
     error = report.removeprefix(b"\0")
     if error:
         os.close(master)
-        os.waitpid(pid, 0)
+        _wait(pid, deadline)
         code, _, filename = error.partition(b":")
         raise OSError(int(code), os.strerror(int(code)), os.fsdecode(filename) or None)
     if not report:
-        # The helper exited before `exec`, and no OSError stopped it.
+        # The error pipe closed before `exec`, and no OSError stopped the helper.
+        exit_code = _wait(pid, deadline)
         line = _last_line(master)
         os.close(master)
-        _, status = os.waitpid(pid, 0)
-        msg = f"The helper exited with code {os.waitstatus_to_exitcode(status)}"
-        msg += f" before {argv[0]} started"
+        if exit_code is None:
+            msg = f"The helper closed the error pipe, but {argv[0]} did not start"
+            msg += f" within {EXEC_TIMEOUT} s"
+        else:
+            msg = f"The helper exited with code {exit_code} before {argv[0]} started"
         if line:
             msg += f": {line}"
+        if exit_code is None:
+            raise TimeoutError(errno.ETIMEDOUT, msg)
         raise OSError(msg)
     return pid, master
 
