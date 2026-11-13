@@ -27,6 +27,14 @@ JS:
 - `terminado/_static/terminado.js`: A lightweight wrapper to set up a
   term.js terminal with a websocket.
 
+Starting terminals:
+
+On POSIX systems, terminado starts each terminal from a small Python
+helper with `os.posix_spawn()`, so the server does not fork. Terminado
+still forks on PyPy, in frozen applications, and when the helper does
+not start. To always fork, set `PTYPROCESS_USE_FORK=1` in the
+environment of the server.
+
 Local Installation:
 
 > $ pip install -e .[test]
