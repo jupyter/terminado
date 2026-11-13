@@ -30,7 +30,7 @@ email = "jupyter@googlegroups.com"
 Homepage = "https://github.com/jupyter/terminado"
 
 [project.optional-dependencies]
-test = [ "pytest>=7.0", "pre-commit", "pytest-timeout",]
+test = [ "pytest>=7.4", "pre-commit", "pytest-timeout",]
 docs = [ "sphinx", "pydata-sphinx-theme", "myst_parser"]
 typing = ["mypy~=2.4", "traitlets>=5.11.1"]
 
