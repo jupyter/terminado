@@ -383,7 +383,8 @@ def test_waiting_for_the_helper_has_a_timeout(monkeypatch, tmp_path):
     start = time.monotonic()
     with pytest.raises(TimeoutError):
         PtyWithClients(["sleep", "5"], env=dict(os.environ))
-    assert time.monotonic() - start < 4
+    elapsed = time.monotonic() - start
+    assert elapsed < 4
 
 
 @requires_spawn
@@ -471,7 +472,8 @@ def test_falls_back_to_fork_when_the_helper_does_not_start(monkeypatch, tmp_path
     monkeypatch.setattr(_spawn, "EXEC_TIMEOUT", 1)
     start = time.monotonic()
     assert "hello" in output_of(["sh", "-c", "echo hello"])
-    assert time.monotonic() - start < 4
+    elapsed = time.monotonic() - start
+    assert elapsed < 4
 
 
 @requires_spawn
@@ -491,4 +493,5 @@ def test_startup_check_does_not_wait_for_its_command(monkeypatch, tmp_path):
         assert _spawn.available()
     finally:
         signal.signal(signal.SIGHUP, previous)
-    assert time.monotonic() - start < 4
+    elapsed = time.monotonic() - start
+    assert elapsed < 4
