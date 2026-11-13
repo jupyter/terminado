@@ -246,6 +246,9 @@ def _start(
     master, slave = os.openpty()
     error_read = error_write = env_read = env_write = -1
     try:
+        # The parent keeps `slave` open until it has read the output of a helper that exits
+        # before `exec`. Some systems, such as macOS, discard that output when the last
+        # slave is closed.
         slave = _above_targets(slave)
         error_read, error_write = os.pipe()
         error_write = _above_targets(error_write)
@@ -268,11 +271,29 @@ def _start(
             setsigmask={signal.SIGINT},
         )
     except BaseException:
-        _close(master, error_read, env_write)
+        _close(master, slave, error_read, env_write)
         raise
     finally:
-        _close(slave, error_write, env_read)
+        _close(error_write, env_read)
 
+    try:
+        return _finish_start(master, pid, error_read, env_write, environment, argv)
+    finally:
+        _close(slave)
+
+
+def _finish_start(
+    master: int,
+    pid: int,
+    error_read: int,
+    env_write: int,
+    environment: bytes,
+    argv: list[str],
+) -> tuple[int, int]:
+    """Wait for the helper to call `exec`, and return the process ID and the master.
+
+    The caller closes the slave of the terminal. This function closes `master` when it raises.
+    """
     deadline = time.monotonic() + EXEC_TIMEOUT
     try:
         report = _wait_for_exec(error_read, env_write, environment, deadline)
