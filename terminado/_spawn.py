@@ -120,7 +120,7 @@ def _above_targets(fd: int) -> int:
     return copy
 
 
-def _close(*fds: int) -> None:
+def _close_all_fd(*fds: int) -> None:
     """Close each file descriptor in `fds` that is not -1."""
     for fd in fds:
         if fd != -1:
@@ -271,15 +271,15 @@ def _start(
             setsigmask={signal.SIGINT},
         )
     except BaseException:
-        _close(master, slave, error_read, env_write)
+        _close_all_fd(master, slave, error_read, env_write)
         raise
     finally:
-        _close(error_write, env_read)
+        _close_all_fd(error_write, env_read)
 
     try:
         return _finish_start(master, pid, error_read, env_write, environment, argv)
     finally:
-        _close(slave)
+        _close_all_fd(slave)
 
 
 def _finish_start(
