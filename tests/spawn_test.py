@@ -287,6 +287,20 @@ def test_exit_status():
     terminal.ptyproc.close()
 
 
+@requires_spawn
+def test_output_of_a_command_that_exits_before_the_open_returns(monkeypatch):
+    # The server thread can wait for the GIL here while the command prints and exits.
+    wait_for_exec = _spawn._wait_for_exec
+
+    def slow_wait_for_exec(*args):
+        report = wait_for_exec(*args)
+        time.sleep(0.2)
+        return report
+
+    monkeypatch.setattr(_spawn, "_wait_for_exec", slow_wait_for_exec)
+    assert output_of(["sh", "-c", "echo hello"]).split() == ["hello"]
+
+
 def test_window_size():
     assert output_of(["stty", "size"]).split() == ["24", "80"]
 

@@ -214,7 +214,9 @@ def _wait_for_exec(
 def _last_line(master: int) -> str:
     """Return the last line that the helper printed to the terminal, without colors.
 
-    Call this function only after the helper has exited.
+    Call this function before waiting for the helper. On macOS, the exiting helper closes
+    the error pipe before the terminal, and its last close of the terminal discards the
+    output that is not read within 0.6 s.
     """
     output = b""
     os.set_blocking(master, False)
@@ -246,9 +248,6 @@ def _start(
     master, slave = os.openpty()
     error_read = error_write = env_read = env_write = -1
     try:
-        # The parent keeps `slave` open until it has read the output of a helper that exits
-        # before `exec`. Some systems, such as macOS, discard that output when the last
-        # slave is closed.
         slave = _above_targets(slave)
         error_read, error_write = os.pipe()
         error_write = _above_targets(error_write)
@@ -271,15 +270,13 @@ def _start(
             setsigmask={signal.SIGINT},
         )
     except BaseException:
-        _close_all_fd(master, slave, error_read, env_write)
+        _close_all_fd(master, error_read, env_write)
         raise
     finally:
-        _close_all_fd(error_write, env_read)
+        # Closing the slave later can block 0.6 s on macOS and discard the command's output.
+        _close_all_fd(slave, error_write, env_read)
 
-    try:
-        return _finish_start(master, pid, error_read, env_write, environment, argv)
-    finally:
-        _close_all_fd(slave)
+    return _finish_start(master, pid, error_read, env_write, environment, argv)
 
 
 def _finish_start(
@@ -292,7 +289,7 @@ def _finish_start(
 ) -> tuple[int, int]:
     """Wait for the helper to call `exec`, and return the process ID and the master.
 
-    The caller closes the slave of the terminal. This function closes `master` when it raises.
+    This function closes `master` when it raises.
     """
     deadline = time.monotonic() + EXEC_TIMEOUT
     try:
@@ -316,8 +313,8 @@ def _finish_start(
         raise OSError(int(code), os.strerror(int(code)), os.fsdecode(filename) or None)
     if not report:
         # The error pipe closed before `exec`, and no OSError stopped the helper.
-        exit_code = _wait(pid, deadline)
         line = _last_line(master)
+        exit_code = _wait(pid, deadline)
         os.close(master)
         if exit_code is None:
             msg = f"The helper closed the error pipe, but {argv[0]} did not start"
