@@ -257,7 +257,7 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {"tornado": ("http://www.tornadoweb.org/en/stable/", None)}
+intersphinx_mapping = {"tornado": ("https://www.tornadoweb.org/en/stable/", None)}
 
 
 def setup(app):

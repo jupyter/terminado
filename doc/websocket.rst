@@ -2,7 +2,7 @@ Using the TermSocket handler
 ============================
 
 :class:`terminado.TermSocket` is the main API in Terminado. It is a subclass of
-:class:`tornado.web.WebSocketHandler`, used to communicate between a
+:class:`tornado.websocket.WebSocketHandler`, used to communicate between a
 pseudoterminal and term.js. You add it to your web application as a handler like
 any other::
 
